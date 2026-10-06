@@ -78,12 +78,14 @@ export type TerminalMode = 'integrated' | 'external'
 export type Palette = 'amber' | 'pipboy' | 'rose'
 export type DisplayFont = 'oxanium' | 'orbitron' | 'chakra' | 'pressstart' | 'vt323'
 export type FontScale = 'sm' | 'md' | 'lg'
+export type LanguageSetting = 'auto' | 'fr' | 'en'
 
 export interface Settings {
   theme: ThemeMode
   palette: Palette
   displayFont: DisplayFont
   fontScale: FontScale
+  language: LanguageSetting
   showAgents: boolean
   showHidden: boolean
   terminalMode: TerminalMode

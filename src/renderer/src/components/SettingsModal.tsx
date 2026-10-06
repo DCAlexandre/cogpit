@@ -1,8 +1,9 @@
 import { RefreshCw, Trash2, ChevronDown } from 'lucide-react'
-import type { AppInfo, DisplayFont, FontScale, Palette, Settings } from '@shared/types'
+import type { AppInfo, DisplayFont, FontScale, LanguageSetting, Palette, Settings } from '@shared/types'
 import { Modal } from './ui/modal'
 import { Button } from './ui/button'
 import { cn } from '@/lib/utils'
+import { useT } from '@/lib/i18n'
 
 const PALETTES: { id: Palette; label: string; from: string; to: string }[] = [
   { id: 'amber', label: 'Steampunk', from: '#ffcf4d', to: '#ff9d00' },
@@ -10,18 +11,25 @@ const PALETTES: { id: Palette; label: string; from: string; to: string }[] = [
   { id: 'rose', label: 'Synthwave', from: '#f58ac0', to: '#c05cff' }
 ]
 
-const FONTS: { id: DisplayFont; label: string; sample: string }[] = [
-  { id: 'oxanium', label: 'Oxanium — sci-fi UI', sample: 'Oxanium' },
-  { id: 'orbitron', label: 'Orbitron — galactique', sample: 'Orbitron' },
-  { id: 'chakra', label: 'Chakra Petch — HUD', sample: '"Chakra Petch"' },
-  { id: 'pressstart', label: 'Press Start 2P — arcade', sample: '"Press Start 2P"' },
-  { id: 'vt323', label: 'VT323 — terminal', sample: 'VT323' }
+const FONTS: { id: DisplayFont; key: string; sample: string }[] = [
+  { id: 'oxanium', key: 'settings.font.oxanium', sample: 'Oxanium' },
+  { id: 'orbitron', key: 'settings.font.orbitron', sample: 'Orbitron' },
+  { id: 'chakra', key: 'settings.font.chakra', sample: '"Chakra Petch"' },
+  { id: 'pressstart', key: 'settings.font.pressstart', sample: '"Press Start 2P"' },
+  { id: 'vt323', key: 'settings.font.vt323', sample: 'VT323' }
 ]
 
-const SCALES: { id: FontScale; label: string }[] = [
-  { id: 'sm', label: 'Petite' },
-  { id: 'md', label: 'Normale' },
-  { id: 'lg', label: 'Grande' }
+const SCALES: { id: FontScale; key: string }[] = [
+  { id: 'sm', key: 'settings.scale.sm' },
+  { id: 'md', key: 'settings.scale.md' },
+  { id: 'lg', key: 'settings.scale.lg' }
+]
+
+// Language option labels are shown in their own language (plus a translated "auto").
+const LANGUAGES: { id: LanguageSetting; key?: string; label?: string }[] = [
+  { id: 'auto', key: 'settings.language.auto' },
+  { id: 'fr', label: 'Français' },
+  { id: 'en', label: 'English' }
 ]
 
 interface Props {
@@ -45,33 +53,34 @@ export function SettingsModal({
   onRescan,
   onOpenTrash
 }: Props): JSX.Element {
+  const t = useT()
   const ptyOk = appInfo?.pty.available ?? false
   return (
-    <Modal open={open} onClose={onClose} title="Paramètres" className="max-w-xl">
+    <Modal open={open} onClose={onClose} title={t('settings.title')} className="max-w-xl">
       <div className="space-y-5 text-sm">
         <section className="space-y-3">
-          <h3 className="font-display text-brass">Apparence</h3>
+          <h3 className="font-display text-brass">{t('settings.appearance')}</h3>
 
           <div>
-            <div className="hud-label mb-1.5">mode</div>
+            <div className="hud-label mb-1.5">{t('settings.mode')}</div>
             <div className="flex gap-2">
-              {(['system', 'dark', 'light'] as const).map((t) => (
+              {(['system', 'dark', 'light'] as const).map((m) => (
                 <button
-                  key={t}
-                  onClick={() => onChange({ theme: t })}
+                  key={m}
+                  onClick={() => onChange({ theme: m })}
                   className={cn(
                     'flex-1 rounded-md border px-3 py-2 transition-colors',
-                    settings.theme === t ? 'border-primary bg-primary/15 text-foreground' : 'border-border hover:bg-muted'
+                    settings.theme === m ? 'border-primary bg-primary/15 text-foreground' : 'border-border hover:bg-muted'
                   )}
                 >
-                  {t === 'system' ? 'Système' : t === 'dark' ? 'Sombre' : 'Clair'}
+                  {t(`settings.mode.${m}`)}
                 </button>
               ))}
             </div>
           </div>
 
           <div>
-            <div className="hud-label mb-1.5">palette</div>
+            <div className="hud-label mb-1.5">{t('settings.palette')}</div>
             <div className="flex gap-2">
               {PALETTES.map((p) => (
                 <button
@@ -93,7 +102,7 @@ export function SettingsModal({
           </div>
 
           <div>
-            <div className="hud-label mb-1.5">police</div>
+            <div className="hud-label mb-1.5">{t('settings.font')}</div>
             <div className="relative">
               <select
                 value={settings.displayFont}
@@ -102,7 +111,7 @@ export function SettingsModal({
               >
                 {FONTS.map((f) => (
                   <option key={f.id} value={f.id}>
-                    {f.label}
+                    {t(f.key)}
                   </option>
                 ))}
               </select>
@@ -117,7 +126,7 @@ export function SettingsModal({
           </div>
 
           <div>
-            <div className="hud-label mb-1.5">taille de l'interface</div>
+            <div className="hud-label mb-1.5">{t('settings.scale')}</div>
             <div className="flex gap-2">
               {SCALES.map((s) => (
                 <button
@@ -128,27 +137,45 @@ export function SettingsModal({
                     settings.fontScale === s.id ? 'border-primary bg-primary/15 text-foreground' : 'border-border hover:bg-muted'
                   )}
                 >
-                  {s.label}
+                  {t(s.key)}
                 </button>
               ))}
+            </div>
+          </div>
+
+          <div>
+            <div className="hud-label mb-1.5">{t('settings.language')}</div>
+            <div className="relative">
+              <select
+                value={settings.language}
+                onChange={(e) => onChange({ language: e.target.value as LanguageSetting })}
+                className="h-9 w-full appearance-none rounded-md border border-input bg-input/60 pl-3 pr-8 text-sm text-foreground transition-colors hover:border-primary/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                {LANGUAGES.map((l) => (
+                  <option key={l.id} value={l.id}>
+                    {l.key ? t(l.key) : l.label}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown className="pointer-events-none absolute right-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             </div>
           </div>
         </section>
 
         <section className="space-y-1">
-          <h3 className="mb-2 font-display text-brass">Affichage</h3>
-          <Toggle label="Grouper par projet" value={settings.groupByProject} onChange={(v) => onChange({ groupByProject: v })} />
-          <Toggle label="Afficher les sous-agents" value={settings.showAgents} onChange={(v) => onChange({ showAgents: v })} />
-          <Toggle label="Afficher les sessions masquées" value={settings.showHidden} onChange={(v) => onChange({ showHidden: v })} />
+          <h3 className="mb-2 font-display text-brass">{t('settings.display')}</h3>
+          <Toggle label={t('settings.groupByProject')} value={settings.groupByProject} onChange={(v) => onChange({ groupByProject: v })} />
+          <Toggle label={t('settings.showAgents')} value={settings.showAgents} onChange={(v) => onChange({ showAgents: v })} />
+          <Toggle label={t('settings.showHidden')} value={settings.showHidden} onChange={(v) => onChange({ showHidden: v })} />
           <Toggle
-            label="Confirmer les suppressions définitives"
+            label={t('settings.confirmDelete')}
             value={settings.confirmPermanentDelete}
             onChange={(v) => onChange({ confirmPermanentDelete: v })}
           />
         </section>
 
         <section>
-          <h3 className="mb-2 font-display text-brass">Terminal</h3>
+          <h3 className="mb-2 font-display text-brass">{t('settings.terminal')}</h3>
           <div className="flex gap-2">
             <button
               onClick={() => ptyOk && onChange({ terminalMode: 'integrated' })}
@@ -161,7 +188,7 @@ export function SettingsModal({
                 !ptyOk && 'cursor-not-allowed opacity-50'
               )}
             >
-              Intégré
+              {t('settings.integrated')}
             </button>
             <button
               onClick={() => onChange({ terminalMode: 'external' })}
@@ -172,26 +199,21 @@ export function SettingsModal({
                   : 'border-border hover:bg-muted'
               )}
             >
-              Externe
+              {t('settings.external')}
             </button>
           </div>
-          {!ptyOk && (
-            <p className="mt-2 text-xs text-muted-foreground">
-              Terminal intégré indisponible (module natif <code>node-pty</code> non compilé). Installe les
-              build tools puis lance <code className="text-brass">npm run rebuild</code> pour l'activer.
-            </p>
-          )}
+          {!ptyOk && <p className="mt-2 text-xs text-muted-foreground">{t('settings.ptyUnavailable')}</p>}
         </section>
 
         <section>
-          <h3 className="mb-2 font-display text-brass">Actions</h3>
+          <h3 className="mb-2 font-display text-brass">{t('settings.actions')}</h3>
           <div className="flex gap-2">
             <Button variant="outline" size="sm" className="flex-1 gap-1.5" onClick={onRescan}>
               <RefreshCw className={cn('h-3.5 w-3.5', scanning && 'animate-spin text-primary')} />
-              Rafraîchir les sessions
+              {t('settings.refresh')}
             </Button>
             <Button variant="outline" size="sm" className="flex-1 gap-1.5" onClick={onOpenTrash}>
-              <Trash2 className="h-3.5 w-3.5" /> Corbeille
+              <Trash2 className="h-3.5 w-3.5" /> {t('settings.trashBtn')}
             </Button>
           </div>
         </section>
@@ -199,15 +221,15 @@ export function SettingsModal({
         {appInfo && (
           <section className="space-y-1 rounded-md border bg-background/40 p-3 text-xs text-muted-foreground">
             <div className="flex justify-between gap-2">
-              <span>Adapter</span>
+              <span>{t('settings.adapter')}</span>
               <span className="font-mono text-foreground">{appInfo.adapterLabel}</span>
             </div>
             <div className="flex justify-between gap-2">
-              <span>Dossier Claude</span>
+              <span>{t('settings.claudeFolder')}</span>
               <span className="truncate font-mono">{appInfo.claudeRoot}</span>
             </div>
             <div className="flex justify-between gap-2">
-              <span>Version</span>
+              <span>{t('settings.version')}</span>
               <span className="font-mono">{appInfo.version}</span>
             </div>
           </section>

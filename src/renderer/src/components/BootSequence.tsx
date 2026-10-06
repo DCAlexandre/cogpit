@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react'
+import { useT } from '@/lib/i18n'
 
 /** One-time "power-on" of the deck: a scanline wipe + the wordmark flickering in.
  *  Skipped entirely when the user prefers reduced motion. */
 export function BootSequence(): JSX.Element | null {
+  const t = useT()
   const [done, setDone] = useState(false)
 
   useEffect(() => {
@@ -10,8 +12,8 @@ export function BootSequence(): JSX.Element | null {
       setDone(true)
       return
     }
-    const t = setTimeout(() => setDone(true), 1150)
-    return () => clearTimeout(t)
+    const timer = setTimeout(() => setDone(true), 1150)
+    return () => clearTimeout(timer)
   }, [])
 
   if (done) return null
@@ -33,7 +35,7 @@ export function BootSequence(): JSX.Element | null {
         >
           COGPIT
         </div>
-        <div className="mt-4 hud-label caret-blink">mise sous tension du poste</div>
+        <div className="mt-4 hud-label caret-blink">{t('boot.powerOn')}</div>
       </div>
     </div>
   )

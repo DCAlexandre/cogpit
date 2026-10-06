@@ -167,7 +167,7 @@ export function registerIpc(): void {
     const win = BrowserWindow.getFocusedWindow() ?? BrowserWindow.getAllWindows()[0] ?? undefined
     const res = await dialog.showOpenDialog(win!, {
       properties: ['openDirectory'],
-      title: 'Choisir un dossier pour la nouvelle session'
+      title: 'Choose a folder for the new session'
     })
     return res.canceled || res.filePaths.length === 0 ? null : res.filePaths[0]
   })

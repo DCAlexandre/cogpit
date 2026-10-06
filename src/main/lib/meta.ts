@@ -15,12 +15,15 @@ export type TerminalMode = 'integrated' | 'external'
 export type Palette = 'amber' | 'pipboy' | 'rose'
 export type DisplayFont = 'oxanium' | 'orbitron' | 'chakra' | 'pressstart' | 'vt323'
 export type FontScale = 'sm' | 'md' | 'lg'
+/** UI language: an explicit choice, or follow the device/OS language. */
+export type LanguageSetting = 'auto' | 'fr' | 'en'
 
 export interface Settings {
   theme: ThemeMode
   palette: Palette
   displayFont: DisplayFont
   fontScale: FontScale
+  language: LanguageSetting
   showAgents: boolean
   showHidden: boolean
   terminalMode: TerminalMode
@@ -40,6 +43,7 @@ const DEFAULT_SETTINGS: Settings = {
   palette: 'amber',
   displayFont: 'oxanium',
   fontScale: 'md',
+  language: 'auto',
   showAgents: false,
   showHidden: false,
   // Integrated by default; the UI auto-falls back to external if the pty backend

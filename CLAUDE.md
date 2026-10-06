@@ -7,9 +7,9 @@ Guidance for Claude Code when working in this repo.
 **Cogpit** is a standalone, open-source (MIT) Electron desktop app that manages
 **Claude Code CLI sessions**: it reads `~/.claude/projects/*/*.jsonl`, lists every
 conversation, and lets you resume, preview, rename, trash or delete them. It is its own
-repo (GitHub `DCAlexandre/cogpit`), unrelated to any other project. The app UI currently
-ships in **French**; docs and code comments are in English, and an English UI localization
-is a roadmap item. Keep it approachable for open-source users.
+repo (GitHub `DCAlexandre/cogpit`), unrelated to any other project. The app UI is
+**bilingual (English/French)** — it follows the device language and can be overridden in
+Settings; docs and code comments are in English. Keep it approachable for open-source users.
 
 ## Commands
 
@@ -68,6 +68,12 @@ work without ESM friction), ESM React renderer.
   accumulates and clips the last line on tall panes (the bug behind several fit hacks).
   Canvas draws one pixel-exact surface — same approach as VS Code (WebGL/canvas) — so
   `fitToVisible` can just take xterm's proposed fit. Don't revert to the DOM renderer.
+- **No hardcoded user-facing strings — use i18n.** UI text goes through `useT()` from
+  `lib/i18n` (e.g. `t('ns.key')`, `{name}` placeholders). Messages live in per-area fragment
+  files under `lib/i18n/dict/*.ts` (`{ fr: {...}, en: {...} }`, same keys both locales),
+  merged in `lib/i18n/index.ts`. Add new keys under an existing namespace to avoid collisions.
+  Locale = the `language` setting (`auto` → `navigator.language`); dates/bytes are localized in
+  `lib/format.ts` via `setFormatLocale`. Don't translate logs, test-ids, or dynamic data.
 - **Type-check before shipping** — esbuild transpiles without type errors, so run
   `npm run typecheck`.
 - Scanning caches parsed metadata by `path + mtime + size` (`parse-cache.json`); the

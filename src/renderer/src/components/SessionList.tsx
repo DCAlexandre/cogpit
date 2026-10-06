@@ -4,6 +4,7 @@ import type { SessionSummary } from '@shared/types'
 import { Button } from './ui/button'
 import { cn } from '@/lib/utils'
 import { formatBytes, formatRelative } from '@/lib/format'
+import { useT } from '@/lib/i18n'
 
 interface Props {
   sessions: SessionSummary[]
@@ -32,12 +33,13 @@ export function SessionList({
   onHideProject,
   onContextMenu
 }: Props): JSX.Element {
+  const t = useT()
   if (sessions.length === 0) {
     return (
       <div className="flex h-full flex-col items-center justify-center gap-3 text-muted-foreground">
         <Bot className="h-8 w-8 opacity-30" />
-        <p className="font-mono text-sm">Aucune session ne correspond.</p>
-        <p className="hud-label">ajuste la recherche ou les filtres</p>
+        <p className="font-mono text-sm">{t('list.empty')}</p>
+        <p className="hud-label">{t('list.emptyHint')}</p>
       </div>
     )
   }
@@ -88,7 +90,7 @@ export function SessionList({
                 size="icon"
                 variant="ghost"
                 className="h-6 w-6 opacity-0 hover:text-primary group-hover:opacity-100"
-                title="Masquer ce projet"
+                title={t('list.hideProject')}
                 onClick={() => onHideProject(projectKey)}
               >
                 <EyeOff className="h-3.5 w-3.5" />
@@ -140,6 +142,7 @@ function Row({
   onTrash: (s: SessionSummary) => void
   onContextMenu: (s: SessionSummary, x: number, y: number) => void
 }): JSX.Element {
+  const t = useT()
   return (
     <div
       data-testid="session-row"
@@ -160,7 +163,7 @@ function Row({
         checked={isChecked}
         onClick={(e) => e.stopPropagation()}
         onChange={() => onToggleCheck(s.id)}
-        aria-label="Sélectionner"
+        aria-label={t('list.select')}
         className={cn(
           'h-3.5 w-3.5 shrink-0 cursor-pointer appearance-none rounded-[2px] border border-muted-foreground/40 bg-transparent transition-all checked:border-primary checked:bg-primary checked:shadow-glow-sm',
           !isChecked && 'opacity-0 group-hover:opacity-100'
@@ -223,8 +226,8 @@ function Row({
           size="icon"
           variant="ghost"
           className="glow-hover h-7 w-7 hover:text-primary"
-          title="Reprendre"
-          aria-label="Reprendre la session"
+          title={t('list.resume')}
+          aria-label={t('list.resumeSession')}
           onClick={(e) => {
             e.stopPropagation()
             onResume(s)
@@ -236,8 +239,8 @@ function Row({
           size="icon"
           variant="ghost"
           className="h-7 w-7 text-destructive hover:bg-destructive/10"
-          title="Corbeille"
-          aria-label="Mettre à la corbeille"
+          title={t('list.trash')}
+          aria-label={t('list.trashSession')}
           onClick={(e) => {
             e.stopPropagation()
             onTrash(s)

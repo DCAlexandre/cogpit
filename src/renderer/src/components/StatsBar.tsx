@@ -1,17 +1,19 @@
 import type { Stats } from '@shared/types'
 import { formatBytes, formatRelative } from '@/lib/format'
+import { useT } from '@/lib/i18n'
 
 export function StatsBar({ stats }: { stats: Stats }): JSX.Element {
+  const t = useT()
   return (
     <div className="flex items-center gap-5 border-t border-border bg-background/60 px-4 py-1.5">
-      <Readout label="sessions" value={stats.totalSessions} />
-      <Readout label="sous-agents" value={stats.totalAgents} />
-      <Readout label="projets" value={stats.projectCount} />
-      <Readout label="disque" value={formatBytes(stats.totalBytes)} />
+      <Readout label={t('stats.sessions')} value={stats.totalSessions} />
+      <Readout label={t('stats.agents')} value={stats.totalAgents} />
+      <Readout label={t('stats.projects')} value={stats.projectCount} />
+      <Readout label={t('stats.disk')} value={formatBytes(stats.totalBytes)} />
       <div className="flex-1" />
       <div className="flex items-center gap-2">
         <span className="led led-active animate-led-pulse" />
-        <span className="hud-label">dernière activité</span>
+        <span className="hud-label">{t('stats.lastActivity')}</span>
         <span className="font-mono text-[11px] text-foreground/80">{formatRelative(stats.lastActivity)}</span>
       </div>
     </div>

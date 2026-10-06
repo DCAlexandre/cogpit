@@ -247,7 +247,7 @@ export async function readTranscript(filePath: string, maxMessages = 2000): Prom
           const b = block as Record<string, unknown>
           if (b.type === 'text' && typeof b.text === 'string') texts.push(b.text)
           else if (b.type === 'tool_use' && typeof b.name === 'string') tools.push(b.name)
-          else if (b.type === 'tool_result') texts.push('[résultat outil]')
+          else if (b.type === 'tool_result') texts.push('[tool result]')
         }
       }
       const text = texts.join('\n').trim()

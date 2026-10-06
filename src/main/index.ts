@@ -147,13 +147,13 @@ function showWindow(): void {
 function createTray(): void {
   try {
     tray = new Tray(appIcon().resize({ width: 16, height: 16 }))
-    tray.setToolTip('Cogpit — sessions Claude Code')
+    tray.setToolTip('Cogpit — Claude Code sessions')
     tray.setContextMenu(
       Menu.buildFromTemplate([
-        { label: 'Ouvrir Cogpit', click: showWindow },
+        { label: 'Open Cogpit', click: showWindow },
         { type: 'separator' },
         {
-          label: 'Quitter',
+          label: 'Quit',
           click: () => {
             quitting = true
             app.quit()

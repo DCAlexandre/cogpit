@@ -3,8 +3,10 @@ import { Loader2, Terminal as TerminalIcon, User, Wrench } from 'lucide-react'
 import type { TranscriptMessage } from '@shared/types'
 import { Badge } from './ui/badge'
 import { cn } from '@/lib/utils'
+import { useT } from '@/lib/i18n'
 
 export function TranscriptView({ filePath }: { filePath: string }): JSX.Element {
+  const t = useT()
   const [messages, setMessages] = useState<TranscriptMessage[] | null>(null)
   const [error, setError] = useState<string | null>(null)
 
@@ -21,16 +23,16 @@ export function TranscriptView({ filePath }: { filePath: string }): JSX.Element 
     }
   }, [filePath])
 
-  if (error) return <div className="p-6 text-sm text-destructive">Lecture impossible : {error}</div>
+  if (error) return <div className="p-6 text-sm text-destructive">{t('transcript.readError', { error })}</div>
   if (!messages) {
     return (
       <div className="flex h-full items-center justify-center text-muted-foreground">
-        <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Lecture de la conversation…
+        <Loader2 className="mr-2 h-4 w-4 animate-spin" /> {t('transcript.loading')}
       </div>
     )
   }
   if (messages.length === 0) {
-    return <div className="p-6 text-sm text-muted-foreground">Aucun message lisible dans cette session.</div>
+    return <div className="p-6 text-sm text-muted-foreground">{t('transcript.empty')}</div>
   }
 
   return (
@@ -50,15 +52,15 @@ export function TranscriptView({ filePath }: { filePath: string }): JSX.Element 
               <TerminalIcon className="h-3.5 w-3.5 text-patina" />
             )}
             <span className="font-medium uppercase tracking-wide">
-              {m.role === 'user' ? 'Vous' : 'Claude'}
+              {m.role === 'user' ? t('transcript.roleUser') : t('transcript.roleAssistant')}
             </span>
           </div>
           {m.text && <div className="whitespace-pre-wrap break-words leading-relaxed">{m.text}</div>}
           {m.tools.length > 0 && (
             <div className="mt-2 flex flex-wrap gap-1.5">
-              {m.tools.map((t, j) => (
+              {m.tools.map((tool, j) => (
                 <Badge key={j} variant="accent">
-                  <Wrench className="h-3 w-3" /> {t}
+                  <Wrench className="h-3 w-3" /> {tool}
                 </Badge>
               ))}
             </div>

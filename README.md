@@ -14,7 +14,7 @@ so closing your editor or rebooting never means hunting for a lost console again
 
 <img src="docs/screenshot-main.png" alt="Cogpit — every Claude Code session grouped by project" width="840">
 
-<sub>Shown with placeholder sessions. The UI currently ships in French (English localization is on the roadmap).</sub>
+<sub>Shown with placeholder sessions. The UI ships in English and French and follows your device language (switchable in Settings).</sub>
 
 </div>
 
@@ -65,6 +65,7 @@ Appearance**:
   and VT323 (all embedded as OFL woff2 — no network fetch). Data and the terminal use
   JetBrains Mono.
 - **UI scale** — small / medium / large.
+- **Language** — English or French, auto-detected from your device (override in Settings).
 - **Light / dark** — follows the OS, fully overridable.
 
 <div align="center">
@@ -137,7 +138,6 @@ this repository (`.jsonl` files are git-ignored).
 
 ## Roadmap
 
-- English UI localization (the app currently ships in French)
 - "Launch at startup" toggle
 - Export / archive a conversation to Markdown
 - Additional CLI adapters

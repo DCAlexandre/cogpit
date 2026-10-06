@@ -111,7 +111,9 @@ async function parse(filePath: string, projectDir: string): Promise<ParsedResult
     title = firstPrompt
     titleSource = 'firstMessage'
   } else {
-    title = isAgent ? 'Sous-agent' : 'Session sans titre'
+    // Fallback labels live in the main process (no renderer locale here), so they
+    // default to English — the app's default language for anything i18n can't reach.
+    title = isAgent ? 'Sub-agent' : 'Untitled session'
     titleSource = 'none'
   }
 

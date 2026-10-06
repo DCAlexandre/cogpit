@@ -3,6 +3,7 @@ import { Layers, Star, Bot, Eye, ChevronRight, Folder, FolderGit2, SlidersHorizo
 import type { ProjectSummary } from '@shared/types'
 import { cn } from '@/lib/utils'
 import { formatRelative } from '@/lib/format'
+import { useT } from '@/lib/i18n'
 
 export interface Filters {
   favoritesOnly: boolean
@@ -36,7 +37,7 @@ function segmentsOf(p: string): string[] {
 
 /** Build a folder tree from project cwds, stripping the shared root prefix so the
  *  tree mirrors the user's own directory layout — whatever it is. */
-function buildTree(projects: ProjectSummary[], counts: Map<string, number>): TreeNode[] {
+function buildTree(projects: ProjectSummary[], counts: Map<string, number>, othersLabel: string): TreeNode[] {
   const withCwd = projects.filter((p) => p.cwd)
   const others = projects.filter((p) => !p.cwd)
 
@@ -73,7 +74,7 @@ function buildTree(projects: ProjectSummary[], counts: Map<string, number>): Tre
   }
 
   if (others.length > 0) {
-    const bucket: TreeNode = { name: 'Autres', id: '/__others', children: [], count: 0 }
+    const bucket: TreeNode = { name: othersLabel, id: '/__others', children: [], count: 0 }
     for (const p of others) bucket.children.push({ name: p.name, id: p.key, project: p, children: [], count: 0 })
     root.children.push(bucket)
   }
@@ -100,6 +101,7 @@ export function Sidebar({
   onRevealProject,
   onProjectContextMenu
 }: Props): JSX.Element {
+  const t = useT()
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set())
   const [filtersOpen, setFiltersOpen] = useState(false)
   const anyFilter = filters.favoritesOnly || filters.showAgents || filters.showHidden
@@ -110,7 +112,8 @@ export function Sidebar({
     [projects, filters.showHidden, counts]
   )
 
-  const tree = useMemo(() => buildTree(shown, counts), [shown, counts])
+  const othersLabel = t('sidebar.others')
+  const tree = useMemo(() => buildTree(shown, counts, othersLabel), [shown, counts, othersLabel])
 
   const toggle = (id: string): void =>
     setCollapsed((cur) => {
@@ -123,13 +126,13 @@ export function Sidebar({
   return (
     <nav className="relative flex h-full w-64 shrink-0 flex-col border-r border-border bg-card/40">
       <div className="flex items-center justify-between px-4 pb-1.5 pt-3">
-        <span className="hud-label">projets</span>
+        <span className="hud-label">{t('sidebar.projects')}</span>
         <div className="flex items-center gap-2">
           <span className="hud-label text-primary/70">{shown.length}</span>
           <button
             onClick={() => setFiltersOpen((o) => !o)}
-            title="Filtres"
-            aria-label="Filtres"
+            title={t('sidebar.filters')}
+            aria-label={t('sidebar.filters')}
             aria-expanded={filtersOpen}
             className={cn(
               'relative flex h-6 w-6 items-center justify-center rounded-md transition-colors',
@@ -147,23 +150,23 @@ export function Sidebar({
           <div className="fixed inset-0 z-20" onClick={() => setFiltersOpen(false)} />
           <div className="panel absolute right-2 top-11 z-30 w-56 animate-fade-in p-1.5">
             <div className="px-2 pb-1 pt-0.5">
-              <span className="hud-label">filtres</span>
+              <span className="hud-label">{t('sidebar.filtersTitle')}</span>
             </div>
             <Switch
               icon={<Star className="h-3.5 w-3.5" />}
-              label="Favoris seulement"
+              label={t('sidebar.favoritesOnly')}
               active={filters.favoritesOnly}
               onClick={() => onFilterChange({ favoritesOnly: !filters.favoritesOnly })}
             />
             <Switch
               icon={<Bot className="h-3.5 w-3.5" />}
-              label="Sous-agents"
+              label={t('sidebar.subAgents')}
               active={filters.showAgents}
               onClick={() => onFilterChange({ showAgents: !filters.showAgents })}
             />
             <Switch
               icon={<Eye className="h-3.5 w-3.5" />}
-              label="Masqués"
+              label={t('sidebar.hidden')}
               active={filters.showHidden}
               onClick={() => onFilterChange({ showHidden: !filters.showHidden })}
             />
@@ -180,7 +183,7 @@ export function Sidebar({
           )}
         >
           <Layers className="h-4 w-4 text-primary" />
-          <span className="flex-1 text-[13px] font-medium">Tous les projets</span>
+          <span className="flex-1 text-[13px] font-medium">{t('sidebar.allProjects')}</span>
           <span className="font-mono text-[11px] tabular-nums text-muted-foreground/70">{totalSessions}</span>
         </button>
 
@@ -226,6 +229,7 @@ function TreeRow({
   onReveal: (key: string) => void
   onContextMenu: (project: ProjectSummary, x: number, y: number) => void
 }): JSX.Element {
+  const t = useT()
   const hasChildren = node.children.length > 0
   const isOpen = !collapsed.has(node.id)
   const proj = node.project
@@ -256,7 +260,7 @@ function TreeRow({
           <button
             onClick={() => onToggle(node.id)}
             className="flex h-6 w-5 shrink-0 items-center justify-center text-muted-foreground/70 hover:text-primary"
-            aria-label={isOpen ? 'Replier' : 'Déplier'}
+            aria-label={isOpen ? t('sidebar.collapse') : t('sidebar.expand')}
           >
             <ChevronRight className={cn('h-3.5 w-3.5 transition-transform', isOpen && 'rotate-90')} />
           </button>

@@ -2,6 +2,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Loader2, Trash2, X, Play, Plus, Pin, Star, Pencil, FolderOpen, Code2, Eye, EyeOff } from 'lucide-react'
 import type { AppInfo, ProjectSummary, ScanResult, Settings, SessionSummary, TerminalTarget } from '@shared/types'
 import { applyTheme, applyAppearance } from './lib/theme'
+import { LocaleContext, resolveLocale, deviceLocale, translate, type TFunc } from './lib/i18n'
+import { setFormatLocale } from './lib/format'
 import { TopBar, type SortKey } from './components/TopBar'
 import { Sidebar, type Filters } from './components/Sidebar'
 import { SessionList } from './components/SessionList'
@@ -58,6 +60,14 @@ export default function App(): JSX.Element {
   const terminalsRef = useRef<OpenTerminal[]>([])
   terminalsRef.current = terminals
   const termCounter = useRef(0)
+
+  // Active locale: the explicit setting, or the device language when "auto".
+  const locale = settings ? resolveLocale(settings.language) : deviceLocale()
+  const t: TFunc = (key, params) => translate(locale, key, params)
+  useEffect(() => {
+    setFormatLocale(locale)
+    document.documentElement.lang = locale
+  }, [locale])
 
   const rescan = useCallback(async () => {
     setScanning(true)
@@ -199,7 +209,7 @@ export default function App(): JSX.Element {
       const res = await window.api.openExternal({ kind: 'resume', session: s })
       if (!res.ok) {
         window.api.log('error', 'resume', 'external terminal launch failed', { id: s.id })
-        alert("Impossible d'ouvrir un terminal.")
+        alert(t('app.terminalOpenFailed'))
       }
     },
     [effectiveIntegrated, openTerminal]
@@ -237,7 +247,7 @@ export default function App(): JSX.Element {
 
   const deleteOne = useCallback(
     async (s: SessionSummary) => {
-      if (settings?.confirmPermanentDelete && !window.confirm(`Supprimer définitivement « ${s.displayTitle} » ?`)) return
+      if (settings?.confirmPermanentDelete && !window.confirm(t('app.confirmDelete', { title: s.displayTitle }))) return
       window.api.log('warn', 'delete', s.id, { file: s.filePath })
       await window.api.deletePermanent(s.filePath)
       removeLocally(new Set([s.id]))
@@ -284,7 +294,7 @@ export default function App(): JSX.Element {
     async (p: ProjectSummary) => {
       const targets = (scan?.sessions ?? []).filter((s) => s.projectKey === p.key)
       if (targets.length === 0) return
-      if (!window.confirm(`Mettre ${targets.length} session(s) de « ${p.name} » à la corbeille ?`)) return
+      if (!window.confirm(t('app.confirmTrashProject', { count: targets.length, name: p.name }))) return
       for (const s of targets) await window.api.trashSession(toPayload(s))
       removeLocally(new Set(targets.map((s) => s.id)))
     },
@@ -370,45 +380,46 @@ export default function App(): JSX.Element {
       const s = menu.session
       const cwd = sessionCwd(s)
       return [
-        { label: 'Reprendre', icon: <Play className="h-3.5 w-3.5" />, onClick: () => resume(s) },
-        { label: 'Nouvelle conversation', icon: <Plus className="h-3.5 w-3.5" />, onClick: () => cwd && launchNew(cwd), disabled: !cwd },
+        { label: t('menu.resume'), icon: <Play className="h-3.5 w-3.5" />, onClick: () => resume(s) },
+        { label: t('menu.newConversation'), icon: <Plus className="h-3.5 w-3.5" />, onClick: () => cwd && launchNew(cwd), disabled: !cwd },
         { separator: true },
-        { label: 'Renommer', icon: <Pencil className="h-3.5 w-3.5" />, onClick: () => setRenaming(s) },
-        { label: s.pinned ? 'Désépingler' : 'Épingler', icon: <Pin className="h-3.5 w-3.5" />, onClick: () => setCustomFlag(s, 'pinned') },
-        { label: s.favorite ? 'Retirer des favoris' : 'Ajouter aux favoris', icon: <Star className="h-3.5 w-3.5" />, onClick: () => setCustomFlag(s, 'favorite') },
+        { label: t('menu.rename'), icon: <Pencil className="h-3.5 w-3.5" />, onClick: () => setRenaming(s) },
+        { label: s.pinned ? t('menu.unpin') : t('menu.pin'), icon: <Pin className="h-3.5 w-3.5" />, onClick: () => setCustomFlag(s, 'pinned') },
+        { label: s.favorite ? t('menu.unfavorite') : t('menu.favorite'), icon: <Star className="h-3.5 w-3.5" />, onClick: () => setCustomFlag(s, 'favorite') },
         { separator: true },
-        { label: 'Ouvrir le dossier', icon: <FolderOpen className="h-3.5 w-3.5" />, onClick: () => cwd && window.api.openPath(cwd), disabled: !cwd },
-        ...(ideName ? [{ label: `Ouvrir dans ${ideName}`, icon: <Code2 className="h-3.5 w-3.5" />, onClick: () => cwd && window.api.openInIde(cwd), disabled: !cwd }] : []),
+        { label: t('menu.openFolder'), icon: <FolderOpen className="h-3.5 w-3.5" />, onClick: () => cwd && window.api.openPath(cwd), disabled: !cwd },
+        ...(ideName ? [{ label: t('menu.openInIde', { ide: ideName }), icon: <Code2 className="h-3.5 w-3.5" />, onClick: () => cwd && window.api.openInIde(cwd), disabled: !cwd }] : []),
         { separator: true },
-        { label: 'Mettre à la corbeille', icon: <Trash2 className="h-3.5 w-3.5" />, danger: true, onClick: () => trashOne(s) },
-        { label: 'Supprimer définitivement', icon: <Trash2 className="h-3.5 w-3.5" />, danger: true, onClick: () => deleteOne(s) }
+        { label: t('menu.trash'), icon: <Trash2 className="h-3.5 w-3.5" />, danger: true, onClick: () => trashOne(s) },
+        { label: t('menu.deletePermanent'), icon: <Trash2 className="h-3.5 w-3.5" />, danger: true, onClick: () => deleteOne(s) }
       ]
     }
     const p = menu.project
     return [
-      { label: 'Nouvelle conversation', icon: <Plus className="h-3.5 w-3.5" />, onClick: () => p.cwd && launchNew(p.cwd), disabled: !p.cwd },
+      { label: t('menu.newConversation'), icon: <Plus className="h-3.5 w-3.5" />, onClick: () => p.cwd && launchNew(p.cwd), disabled: !p.cwd },
       { separator: true },
-      { label: 'Ouvrir le dossier', icon: <FolderOpen className="h-3.5 w-3.5" />, onClick: () => p.cwd && window.api.openPath(p.cwd), disabled: !p.cwd },
-      ...(ideName ? [{ label: `Ouvrir dans ${ideName}`, icon: <Code2 className="h-3.5 w-3.5" />, onClick: () => p.cwd && window.api.openInIde(p.cwd as string), disabled: !p.cwd }] : []),
+      { label: t('menu.openFolder'), icon: <FolderOpen className="h-3.5 w-3.5" />, onClick: () => p.cwd && window.api.openPath(p.cwd), disabled: !p.cwd },
+      ...(ideName ? [{ label: t('menu.openInIde', { ide: ideName }), icon: <Code2 className="h-3.5 w-3.5" />, onClick: () => p.cwd && window.api.openInIde(p.cwd as string), disabled: !p.cwd }] : []),
       { separator: true },
       {
-        label: p.hidden ? 'Afficher le projet' : 'Masquer le projet',
+        label: p.hidden ? t('menu.showProject') : t('menu.hideProject'),
         icon: p.hidden ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />,
         onClick: () => (p.hidden ? revealProject(p.key) : hideProject(p.key))
       },
-      { label: 'Mettre le projet à la corbeille', icon: <Trash2 className="h-3.5 w-3.5" />, danger: true, onClick: () => trashProject(p) }
+      { label: t('menu.trashProject'), icon: <Trash2 className="h-3.5 w-3.5" />, danger: true, onClick: () => trashProject(p) }
     ]
   }
 
   if (!settings) {
     return (
       <div className="flex h-screen items-center justify-center bg-background text-muted-foreground">
-        <Loader2 className="mr-2 h-5 w-5 animate-spin" /> Démarrage de Cogpit…
+        <Loader2 className="mr-2 h-5 w-5 animate-spin" /> {t('app.booting')}
       </div>
     )
   }
 
   return (
+    <LocaleContext.Provider value={locale}>
     <div className="flex h-screen flex-col overflow-hidden bg-background">
       <div className="crt-overlay" aria-hidden />
       <BootSequence />
@@ -437,13 +448,13 @@ export default function App(): JSX.Element {
         <main className="flex min-w-0 flex-1 flex-col">
           {checked.size > 0 && (
             <div className="flex items-center gap-2 border-b border-border bg-primary/10 px-4 py-1.5 text-sm">
-              <span className="font-mono text-foreground">{checked.size} sélectionnée(s)</span>
+              <span className="font-mono text-foreground">{t('app.selected', { count: checked.size })}</span>
               <div className="flex-1" />
               <Button size="sm" variant="destructive" className="gap-1.5" onClick={trashChecked}>
-                <Trash2 className="h-3.5 w-3.5" /> Mettre à la corbeille
+                <Trash2 className="h-3.5 w-3.5" /> {t('menu.trash')}
               </Button>
               <Button size="sm" variant="ghost" className="gap-1.5" onClick={() => setChecked(new Set())}>
-                <X className="h-3.5 w-3.5" /> Annuler
+                <X className="h-3.5 w-3.5" /> {t('app.cancel')}
               </Button>
             </div>
           )}
@@ -459,7 +470,7 @@ export default function App(): JSX.Element {
             )}
             {!scan ? (
               <div className="flex h-full items-center justify-center text-muted-foreground">
-                <Loader2 className="mr-2 h-5 w-5 animate-spin" /> Analyse des sessions…
+                <Loader2 className="mr-2 h-5 w-5 animate-spin" /> {t('app.scanning')}
               </div>
             ) : (
               <SessionList
@@ -530,5 +541,6 @@ export default function App(): JSX.Element {
       <RenameModal session={renaming} onClose={() => setRenaming(null)} onSave={renameSession} />
       {menu && <ContextMenu x={menu.x} y={menu.y} items={menuItems()} onClose={() => setMenu(null)} />}
     </div>
+    </LocaleContext.Provider>
   )
 }

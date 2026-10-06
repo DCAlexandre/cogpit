@@ -1,12 +1,28 @@
+import type { Locale } from './i18n'
+
+// Current formatting locale, kept in module state so call sites don't have to
+// thread it through. The LocaleProvider sets it whenever the language changes.
+let locale: Locale = 'en'
+let rtf = new Intl.RelativeTimeFormat('en', { numeric: 'auto' })
+
+const BYTE_UNITS: Record<Locale, string[]> = {
+  fr: ['o', 'Ko', 'Mo', 'Go'],
+  en: ['B', 'KB', 'MB', 'GB']
+}
+const DATE_LOCALE: Record<Locale, string> = { fr: 'fr-FR', en: 'en-US' }
+
+export function setFormatLocale(l: Locale): void {
+  locale = l
+  rtf = new Intl.RelativeTimeFormat(l, { numeric: 'auto' })
+}
+
 export function formatBytes(bytes: number): string {
-  if (!bytes) return '0 o'
-  const units = ['o', 'Ko', 'Mo', 'Go']
+  const units = BYTE_UNITS[locale]
+  if (!bytes) return `0 ${units[0]}`
   const i = Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), units.length - 1)
   const value = bytes / Math.pow(1024, i)
   return `${value.toFixed(value >= 10 || i === 0 ? 0 : 1)} ${units[i]}`
 }
-
-const rtf = new Intl.RelativeTimeFormat('fr', { numeric: 'auto' })
 
 export function formatRelative(iso: string | null): string {
   if (!iso) return '—'
@@ -26,7 +42,7 @@ export function formatDateTime(iso: string | null): string {
   if (!iso) return '—'
   const d = new Date(iso)
   if (Number.isNaN(d.getTime())) return '—'
-  return d.toLocaleString('fr-FR', {
+  return d.toLocaleString(DATE_LOCALE[locale], {
     day: '2-digit',
     month: 'short',
     year: 'numeric',

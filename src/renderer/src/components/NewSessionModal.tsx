@@ -5,6 +5,7 @@ import { Modal } from './ui/modal'
 import { Input } from './ui/input'
 import { Button } from './ui/button'
 import { cn } from '@/lib/utils'
+import { useT } from '@/lib/i18n'
 
 interface Props {
   open: boolean
@@ -14,6 +15,7 @@ interface Props {
 }
 
 export function NewSessionModal({ open, onClose, projects, onLaunch }: Props): JSX.Element {
+  const t = useT()
   const [q, setQ] = useState('')
 
   const list = useMemo(() => {
@@ -34,25 +36,25 @@ export function NewSessionModal({ open, onClose, projects, onLaunch }: Props): J
   }
 
   return (
-    <Modal open={open} onClose={onClose} title="Nouvelle session" className="max-w-lg">
+    <Modal open={open} onClose={onClose} title={t('newsession.title')} className="max-w-lg">
       <p className="mb-3 text-sm text-muted-foreground">
-        Lance <code className="text-primary">claude</code> dans le dossier de ton choix.
+        {t('newsession.introBefore')} <code className="text-primary">claude</code> {t('newsession.introAfter')}
       </p>
 
       <Button onClick={browse} className="mb-4 w-full gap-2 uppercase tracking-wider">
-        <FolderSearch className="h-4 w-4" /> Parcourir un dossier…
+        <FolderSearch className="h-4 w-4" /> {t('newsession.browse')}
       </Button>
 
       {projects.some((p) => p.cwd) && (
         <>
           <div className="mb-2 flex items-center gap-2">
-            <span className="hud-label">projets récents</span>
+            <span className="hud-label">{t('newsession.recentProjects')}</span>
             <span className="brass-divider flex-1" />
           </div>
           <Input
             value={q}
             onChange={(e) => setQ(e.target.value)}
-            placeholder="filtrer…"
+            placeholder={t('newsession.filterPlaceholder')}
             className="mb-2"
           />
           <div className="max-h-72 space-y-0.5 overflow-y-auto">
@@ -73,7 +75,7 @@ export function NewSessionModal({ open, onClose, projects, onLaunch }: Props): J
               </button>
             ))}
             {list.length === 0 && (
-              <div className="py-6 text-center text-sm text-muted-foreground">Aucun projet ne correspond.</div>
+              <div className="py-6 text-center text-sm text-muted-foreground">{t('newsession.noMatch')}</div>
             )}
           </div>
         </>

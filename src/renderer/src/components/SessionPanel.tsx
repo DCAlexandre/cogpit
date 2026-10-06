@@ -7,6 +7,7 @@ import { Badge } from './ui/badge'
 import { TranscriptView } from './TranscriptView'
 import { cn } from '@/lib/utils'
 import { formatBytes, formatDateTime } from '@/lib/format'
+import { useT } from '@/lib/i18n'
 
 type Tab = 'apercu' | 'infos'
 
@@ -21,6 +22,7 @@ interface Props {
 }
 
 export function SessionPanel({ session, ideName, onClose, onResume, onPatch, onTrash, onDelete }: Props): JSX.Element {
+  const t = useT()
   const [tab, setTab] = useState<Tab>('apercu')
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState(session.displayTitle)
@@ -83,7 +85,7 @@ export function SessionPanel({ session, ideName, onClose, onResume, onPatch, onT
                 variant="ghost"
                 className="h-6 w-6 shrink-0 opacity-60 hover:opacity-100"
                 onClick={() => setEditing(true)}
-                title="Renommer"
+                title={t('panel.rename')}
               >
                 <Pencil className="h-3 w-3" />
               </Button>
@@ -96,7 +98,7 @@ export function SessionPanel({ session, ideName, onClose, onResume, onPatch, onT
                 <GitBranch className="h-3 w-3" /> {session.gitBranch}
               </Badge>
             )}
-            {session.isAgent && <Badge variant="outline">sous-agent</Badge>}
+            {session.isAgent && <Badge variant="outline">{t('panel.subAgent')}</Badge>}
           </div>
         </div>
         <Button size="icon" variant="ghost" className="h-7 w-7" onClick={onClose}>
@@ -112,25 +114,25 @@ export function SessionPanel({ session, ideName, onClose, onResume, onPatch, onT
           className="gap-1.5 uppercase tracking-wider"
           onClick={() => onResume(session)}
         >
-          <Play className="h-3.5 w-3.5" /> Reprendre
+          <Play className="h-3.5 w-3.5" /> {t('panel.resume')}
         </Button>
         <Button
           size="icon"
           variant="ghost"
           className="h-8 w-8"
-          title="Favori"
+          title={t('panel.favorite')}
           onClick={() => toggle('favorite')}
         >
           <Star className={cn('h-4 w-4', session.favorite && 'fill-brass text-brass')} />
         </Button>
-        <Button size="icon" variant="ghost" className="h-8 w-8" title="Épingler" onClick={() => toggle('pinned')}>
+        <Button size="icon" variant="ghost" className="h-8 w-8" title={t('panel.pin')} onClick={() => toggle('pinned')}>
           <Pin className={cn('h-4 w-4', session.pinned && 'fill-brass text-brass')} />
         </Button>
         <Button
           size="icon"
           variant="ghost"
           className="h-8 w-8"
-          title="Ouvrir le dossier"
+          title={t('panel.openFolder')}
           onClick={() => session.cwd && window.api.openPath(session.cwd)}
         >
           <FolderOpen className="h-4 w-4" />
@@ -140,7 +142,7 @@ export function SessionPanel({ session, ideName, onClose, onResume, onPatch, onT
             size="icon"
             variant="ghost"
             className="h-8 w-8"
-            title={`Ouvrir dans ${ideName}`}
+            title={t('panel.openInIde', { name: ideName })}
             onClick={() => window.api.openInIde(session.cwd as string)}
           >
             <Code2 className="h-4 w-4" />
@@ -151,7 +153,7 @@ export function SessionPanel({ session, ideName, onClose, onResume, onPatch, onT
           size="icon"
           variant="ghost"
           className="h-8 w-8 text-destructive hover:bg-destructive/10"
-          title="Mettre à la corbeille"
+          title={t('panel.trash')}
           onClick={() => onTrash(session)}
         >
           <Trash2 className="h-4 w-4" />
@@ -161,10 +163,10 @@ export function SessionPanel({ session, ideName, onClose, onResume, onPatch, onT
       {/* Tabs */}
       <div className="flex border-b border-border bg-background text-sm">
         <TabButton active={tab === 'apercu'} onClick={() => setTab('apercu')} icon={<FileText className="h-3.5 w-3.5" />}>
-          Aperçu
+          {t('panel.tabOverview')}
         </TabButton>
         <TabButton active={tab === 'infos'} onClick={() => setTab('infos')} icon={<Info className="h-3.5 w-3.5" />}>
-          Détails
+          {t('panel.tabDetails')}
         </TabButton>
       </div>
 
@@ -209,18 +211,19 @@ function TabButton({
 }
 
 function DetailsTab({ session, onDelete }: { session: SessionSummary; onDelete: () => void }): JSX.Element {
+  const t = useT()
   const rows: [string, string][] = [
-    ['Projet', session.projectName],
-    ['Dossier', session.cwd ?? '—'],
-    ['Branche', session.gitBranch ?? '—'],
-    ['Version Claude', session.version ?? '—'],
-    ['Messages', String(session.messageCount)],
-    ['Créée', formatDateTime(session.createdAt)],
-    ['Modifiée', formatDateTime(session.updatedAt)],
-    ['Taille', formatBytes(session.sizeBytes)],
-    ['Titre', `${session.title} (${session.titleSource})`],
-    ['ID', session.id],
-    ['Fichier', session.filePath]
+    [t('panel.fieldProject'), session.projectName],
+    [t('panel.fieldFolder'), session.cwd ?? '—'],
+    [t('panel.fieldBranch'), session.gitBranch ?? '—'],
+    [t('panel.fieldClaudeVersion'), session.version ?? '—'],
+    [t('panel.fieldMessages'), String(session.messageCount)],
+    [t('panel.fieldCreated'), formatDateTime(session.createdAt)],
+    [t('panel.fieldModified'), formatDateTime(session.updatedAt)],
+    [t('panel.fieldSize'), formatBytes(session.sizeBytes)],
+    [t('panel.fieldTitle'), `${session.title} (${session.titleSource})`],
+    [t('panel.fieldId'), session.id],
+    [t('panel.fieldFile'), session.filePath]
   ]
   return (
     <div className="space-y-4">
@@ -234,12 +237,12 @@ function DetailsTab({ session, onDelete }: { session: SessionSummary; onDelete: 
       </dl>
       <div className="brass-divider" />
       <div>
-        <div className="mb-1 text-sm font-medium text-destructive">Zone de danger</div>
+        <div className="mb-1 text-sm font-medium text-destructive">{t('panel.dangerZone')}</div>
         <p className="mb-2 text-xs text-muted-foreground">
-          Supprime définitivement le fichier de session (sans passer par la corbeille).
+          {t('panel.dangerDescription')}
         </p>
         <Button variant="destructive" size="sm" className="gap-1.5" onClick={onDelete}>
-          <Trash2 className="h-3.5 w-3.5" /> Supprimer définitivement
+          <Trash2 className="h-3.5 w-3.5" /> {t('panel.deletePermanently')}
         </Button>
       </div>
     </div>

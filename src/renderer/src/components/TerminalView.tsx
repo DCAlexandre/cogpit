@@ -5,6 +5,7 @@ import { CanvasAddon } from '@xterm/addon-canvas'
 import { Copy, ExternalLink, Check, TerminalSquare } from 'lucide-react'
 import type { TerminalTarget } from '@shared/types'
 import { Button } from './ui/button'
+import { useT } from '@/lib/i18n'
 
 interface Props {
   target: TerminalTarget
@@ -45,6 +46,7 @@ function IntegratedTerminal({
   active: boolean
   resizing: boolean
 }): JSX.Element {
+  const t = useT()
   const hostRef = useRef<HTMLDivElement>(null)
   const termRef = useRef<Terminal | null>(null)
   const fitRef = useRef<FitAddon | null>(null)
@@ -117,7 +119,7 @@ function IntegratedTerminal({
     const offExit = window.api.pty.onExit(({ id, code }) => {
       if (id === ptyIdRef.current) {
         window.api.log('debug', 'terminal', 'pty exit', { id, code })
-        term.writeln('\r\n\x1b[2m— session terminée —\x1b[0m')
+        term.writeln(t('terminal.ended'))
       }
     })
 
@@ -165,7 +167,7 @@ function IntegratedTerminal({
         }
         ptyIdRef.current = res?.id ?? null
         window.api.log('debug', 'terminal', 'pty created', { ptyId: ptyIdRef.current, cols: term.cols, rows: term.rows })
-        if (!ptyIdRef.current) term.writeln('\x1b[31mTerminal intégré indisponible.\x1b[0m')
+        if (!ptyIdRef.current) term.writeln(t('terminal.unavailable'))
         else fitToVisible()
       })
     })
@@ -246,6 +248,7 @@ function IntegratedTerminal({
 
 /** External-terminal fallback: show the command, copy it, or launch it. */
 function ExternalTerminal({ target }: { target: TerminalTarget }): JSX.Element {
+  const t = useT()
   const [command, setCommand] = useState('…')
   const [cwd, setCwd] = useState('')
   const [copied, setCopied] = useState(false)
@@ -271,30 +274,28 @@ function ExternalTerminal({ target }: { target: TerminalTarget }): JSX.Element {
 
   const open = async (): Promise<void> => {
     const res = await window.api.openExternal(target)
-    setLaunch(res.ok ? `Terminal ouvert (${res.via}).` : "Aucun terminal n'a pu être lancé.")
+    setLaunch(res.ok ? t('terminal.opened', { via: res.via }) : t('terminal.openFailed'))
   }
 
   return (
     <div className="flex h-full flex-col items-center justify-center gap-5 p-8 text-center">
       <TerminalSquare className="h-10 w-10 text-primary/70" />
-      <div className="max-w-md text-sm text-muted-foreground">
-        Le terminal intégré n'est pas disponible. Cogpit ouvrira ta console habituelle dans le bon dossier.
-      </div>
+      <div className="max-w-md text-sm text-muted-foreground">{t('terminal.fallbackIntro')}</div>
       <div className="w-full max-w-xl space-y-2 text-left">
-        <div className="hud-label">dossier</div>
+        <div className="hud-label">{t('terminal.folder')}</div>
         <div className="truncate rounded-md border border-border bg-input/60 px-3 py-2 font-mono text-xs">{cwd}</div>
-        <div className="hud-label">commande</div>
+        <div className="hud-label">{t('terminal.command')}</div>
         <div className="flex items-center gap-2">
           <code className="flex-1 truncate rounded-md border border-border bg-input/60 px-3 py-2 font-mono text-xs text-primary">
             {command}
           </code>
-          <Button variant="outline" size="icon" onClick={copy} title="Copier la commande">
+          <Button variant="outline" size="icon" onClick={copy} title={t('terminal.copyCommand')}>
             {copied ? <Check className="h-4 w-4 text-primary" /> : <Copy className="h-4 w-4" />}
           </Button>
         </div>
       </div>
       <Button onClick={open} className="gap-2">
-        <ExternalLink className="h-4 w-4" /> Ouvrir dans un terminal
+        <ExternalLink className="h-4 w-4" /> {t('terminal.openInTerminal')}
       </Button>
       {launch && <div className="text-xs text-muted-foreground">{launch}</div>}
     </div>

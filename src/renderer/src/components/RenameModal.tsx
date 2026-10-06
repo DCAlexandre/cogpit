@@ -3,6 +3,7 @@ import type { SessionSummary } from '@shared/types'
 import { Modal } from './ui/modal'
 import { Input } from './ui/input'
 import { Button } from './ui/button'
+import { useT } from '@/lib/i18n'
 
 interface Props {
   session: SessionSummary | null
@@ -11,6 +12,7 @@ interface Props {
 }
 
 export function RenameModal({ session, onClose, onSave }: Props): JSX.Element {
+  const t = useT()
   const [draft, setDraft] = useState('')
   const inputRef = useRef<HTMLInputElement>(null)
 
@@ -30,21 +32,21 @@ export function RenameModal({ session, onClose, onSave }: Props): JSX.Element {
     <Modal
       open={!!session}
       onClose={onClose}
-      title="Renommer la session"
+      title={t('rename.title')}
       className="max-w-md"
       footer={
         <div className="flex justify-end gap-2">
           <Button variant="ghost" size="sm" onClick={onClose}>
-            Annuler
+            {t('rename.cancel')}
           </Button>
           <Button size="sm" onClick={save}>
-            Enregistrer
+            {t('rename.save')}
           </Button>
         </div>
       }
     >
       <p className="mb-2 text-xs text-muted-foreground">
-        Un titre vide rétablit le titre d'origine. Le fichier de session n'est pas modifié.
+        {t('rename.hint')}
       </p>
       <Input
         ref={inputRef}
@@ -53,7 +55,7 @@ export function RenameModal({ session, onClose, onSave }: Props): JSX.Element {
         onKeyDown={(e) => {
           if (e.key === 'Enter') save()
         }}
-        placeholder="Titre de la session"
+        placeholder={t('rename.placeholder')}
       />
     </Modal>
   )

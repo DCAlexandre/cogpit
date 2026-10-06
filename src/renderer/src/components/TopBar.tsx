@@ -1,6 +1,7 @@
 import { Plus, Settings, ChevronDown } from 'lucide-react'
 import { Button } from './ui/button'
 import { WindowControls } from './WindowControls'
+import { useT } from '@/lib/i18n'
 
 export type SortKey = 'updated' | 'created' | 'title' | 'size' | 'messages'
 
@@ -14,6 +15,7 @@ interface Props {
 }
 
 export function TopBar(props: Props): JSX.Element {
+  const t = useT()
   return (
     <header className="titlebar-drag flex h-12 items-center gap-3 border-b border-border bg-background/95 pl-4 backdrop-blur">
       {/* Brand / status */}
@@ -24,7 +26,7 @@ export function TopBar(props: Props): JSX.Element {
         </span>
       </div>
       <span className="hidden h-6 w-px shrink-0 bg-border lg:block" />
-      <span className="hud-label hidden shrink-0 lg:inline">session deck</span>
+      <span className="hud-label hidden shrink-0 lg:inline">{t('topbar.statusDeck')}</span>
 
       {/* Search — terminal prompt, grows to fill the width */}
       <label className="glow-hover group relative ml-1 flex h-9 flex-1 items-center rounded-md border border-input bg-input/60 focus-within:border-primary/60 focus-within:shadow-glow-sm">
@@ -32,9 +34,9 @@ export function TopBar(props: Props): JSX.Element {
         <input
           value={props.query}
           onChange={(e) => props.onQuery(e.target.value)}
-          placeholder="rechercher — titre, projet, contenu…"
+          placeholder={t('topbar.searchPlaceholder')}
           className="h-full flex-1 bg-transparent pr-3 font-mono text-sm text-foreground placeholder:text-muted-foreground/70 focus:outline-none"
-          aria-label="Rechercher une session"
+          aria-label={t('topbar.searchAria')}
         />
       </label>
 
@@ -43,28 +45,28 @@ export function TopBar(props: Props): JSX.Element {
         <select
           value={props.sort}
           onChange={(e) => props.onSort(e.target.value as SortKey)}
-          aria-label="Trier les sessions"
+          aria-label={t('topbar.sortAria')}
           className="h-9 appearance-none rounded-md border border-input bg-input/60 pl-3 pr-8 font-mono text-[11px] uppercase tracking-wider text-foreground transition-colors hover:border-primary/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
-          <option value="updated">récentes</option>
-          <option value="created">création</option>
-          <option value="title">titre a→z</option>
-          <option value="size">taille</option>
-          <option value="messages">messages</option>
+          <option value="updated">{t('topbar.sortUpdated')}</option>
+          <option value="created">{t('topbar.sortCreated')}</option>
+          <option value="title">{t('topbar.sortTitle')}</option>
+          <option value="size">{t('topbar.sortSize')}</option>
+          <option value="messages">{t('topbar.sortMessages')}</option>
         </select>
         <ChevronDown className="pointer-events-none absolute right-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
       </div>
 
       <Button size="sm" className="gap-1.5 uppercase tracking-wider" onClick={props.onNewSession}>
-        <Plus className="h-4 w-4" /> Nouvelle
+        <Plus className="h-4 w-4" /> {t('topbar.newSession')}
       </Button>
       <Button
         size="icon"
         variant="ghost"
         data-testid="open-settings"
         className="glow-hover h-9 w-9 text-muted-foreground hover:text-primary"
-        title="Paramètres"
-        aria-label="Paramètres"
+        title={t('topbar.settings')}
+        aria-label={t('topbar.settings')}
         onClick={props.onOpenSettings}
       >
         <Settings className="h-4 w-4" />
