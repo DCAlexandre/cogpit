@@ -1,0 +1,29 @@
+# dependencies
+node_modules/
+
+# build output
+out/
+dist/
+*.tsbuildinfo
+
+# logs
+logs/
+*.log
+npm-debug.log*
+
+# editor / os
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json
+
+# local env
+.env
+.env.*
+!.env.example
+
+# never ship anything personal: the app reads ~/.claude at runtime,
+# no Claude session data or exported transcripts belong in the repo
+*.jsonl
+.cogpit-local/

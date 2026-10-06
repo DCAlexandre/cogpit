@@ -1,0 +1,404 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  /* ----------------------------------------------------------------------
+     Daylight instrument — warm paper, dark ink, darkened amber for contrast
+     ---------------------------------------------------------------------- */
+  :root {
+    --background: 42 36% 89%;
+    --foreground: 40 32% 9%;
+    --card: 42 40% 95%;
+    --card-foreground: 40 32% 9%;
+    --popover: 42 44% 96%;
+    --popover-foreground: 40 32% 9%;
+    --muted: 40 22% 81%;
+    --muted-foreground: 38 20% 32%;
+    --primary: 36 96% 42%;
+    --primary-foreground: 42 55% 98%;
+    --secondary: 40 26% 79%;
+    --secondary-foreground: 40 32% 15%;
+    --accent: 30 82% 38%;
+    --accent-foreground: 42 55% 98%;
+    --destructive: 8 74% 45%;
+    --destructive-foreground: 42 55% 98%;
+    --border: 40 22% 64%;
+    --input: 40 22% 70%;
+    --ring: 36 96% 42%;
+    --brass: 34 82% 36%;
+    --copper: 28 82% 36%;
+    --patina: 36 60% 34%;
+    --live: 182 62% 30%;
+    --radius: 0.3rem;
+  }
+
+  /* ----------------------------------------------------------------------
+     Amber-phosphor flight deck (default). Pure yellow-on-black, high contrast.
+     ---------------------------------------------------------------------- */
+  .dark {
+    --background: 30 9% 12%;
+    --foreground: 40 20% 96%;
+    --card: 30 10% 15%;
+    --card-foreground: 40 20% 96%;
+    --popover: 30 11% 14%;
+    --popover-foreground: 40 20% 96%;
+    --muted: 30 9% 20%;
+    --muted-foreground: 38 14% 75%;
+    --primary: 41 100% 53%;
+    --primary-foreground: 34 45% 8%;
+    --secondary: 30 10% 17%;
+    --secondary-foreground: 40 20% 96%;
+    --accent: 45 100% 63%;
+    --accent-foreground: 34 45% 8%;
+    --destructive: 9 92% 63%;
+    --destructive-foreground: 40 30% 10%;
+    --border: 34 13% 27%;
+    --input: 30 10% 18%;
+    --ring: 41 100% 53%;
+    --brass: 41 100% 53%;
+    --copper: 34 92% 56%;
+    --patina: 45 72% 64%;
+    --live: 172 76% 55%;
+  }
+
+  /* ---- Colour palettes (override accents over light OR dark) ---- */
+  [data-palette='pipboy'] {
+    --primary: 145 85% 50%;
+    --primary-foreground: 150 45% 7%;
+    --accent: 135 82% 62%;
+    --accent-foreground: 150 45% 7%;
+    --ring: 145 85% 50%;
+    --brass: 145 85% 50%;
+    --copper: 155 78% 50%;
+    --patina: 135 72% 62%;
+    --live: 95 90% 58%;
+  }
+  [data-palette='rose'] {
+    --primary: 330 85% 62%;
+    --primary-foreground: 330 45% 10%;
+    --accent: 280 82% 72%;
+    --accent-foreground: 285 45% 10%;
+    --ring: 330 85% 62%;
+    --brass: 330 85% 62%;
+    --copper: 300 78% 64%;
+    --patina: 285 78% 72%;
+    --live: 190 88% 62%;
+  }
+
+  /* ---- Display font choice (var consumed by the font-display utility) ---- */
+  [data-font='oxanium'] {
+    --font-display: 'Oxanium';
+  }
+  [data-font='orbitron'] {
+    --font-display: 'Orbitron';
+  }
+  [data-font='chakra'] {
+    --font-display: 'Chakra Petch';
+  }
+  [data-font='pressstart'] {
+    --font-display: 'Press Start 2P';
+  }
+  [data-font='vt323'] {
+    --font-display: 'VT323';
+  }
+
+  /* ---- UI scale ---- */
+  [data-scale='sm'] #root {
+    zoom: 0.92;
+  }
+  [data-scale='lg'] #root {
+    zoom: 1.12;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-family: 'JetBrains Mono', ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
+    font-feature-settings: 'zero' 1, 'ss01' 1;
+    -webkit-font-smoothing: antialiased;
+    overflow: hidden;
+  }
+
+  /* Ambient depth: a gentle vertical gradient (lighter up top, deeper at the
+     bottom) + warm phosphor glows in the corners. Applied to the app shell so it
+     shows behind the translucent chrome. */
+  .dark #root > div {
+    background-image:
+      radial-gradient(1200px 820px at 10% -14%, hsl(var(--primary) / 0.1), transparent 58%),
+      radial-gradient(1000px 780px at 114% 118%, hsl(var(--live) / 0.06), transparent 56%),
+      linear-gradient(180deg, hsl(30 8% 16%) 0%, hsl(30 7% 11%) 100%);
+    background-attachment: fixed;
+  }
+
+  h1,
+  h2,
+  h3,
+  .font-display {
+    font-family: var(--font-display, 'Oxanium'), 'JetBrains Mono', monospace;
+    letter-spacing: 0.01em;
+  }
+
+  /* Keyboard focus is always visible and unmistakable. */
+  :focus-visible {
+    outline: 2px solid hsl(var(--ring));
+    outline-offset: 2px;
+    border-radius: 2px;
+  }
+
+  ::selection {
+    background: hsl(var(--primary) / 0.3);
+    color: hsl(var(--foreground));
+  }
+
+  ::-webkit-scrollbar {
+    width: 11px;
+    height: 11px;
+  }
+  ::-webkit-scrollbar-track {
+    background: hsl(var(--background));
+  }
+  ::-webkit-scrollbar-thumb {
+    background: hsl(var(--primary) / 0.3);
+    border-radius: 2px;
+    border: 3px solid hsl(var(--background));
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--primary) / 0.55);
+  }
+}
+
+@layer components {
+  /* An instrument panel: a riveted brass-edged surface. */
+  .panel {
+    @apply rounded-md border bg-card;
+    box-shadow:
+      0 0 0 1px hsl(var(--primary) / 0.08),
+      0 10px 40px -12px rgb(0 0 0 / 0.7),
+      inset 0 1px 0 0 hsl(var(--primary) / 0.1);
+  }
+
+  /* HUD eyebrow: tracked uppercase mono label. */
+  /* HUD eyebrows stay in Oxanium regardless of the chosen display font, so tiny
+     labels remain legible even with a pixel/arcade font selected. */
+  .hud-label {
+    font-family: 'Oxanium', 'JetBrains Mono', monospace;
+    @apply text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground;
+  }
+
+  /* Status LED dot. Pair with .led-active / .led-danger / .led-idle. */
+  .led {
+    width: 7px;
+    height: 7px;
+    border-radius: 9999px;
+    flex: none;
+    background: hsl(var(--muted-foreground) / 0.5);
+    box-shadow: 0 0 0 1px rgb(0 0 0 / 0.4);
+  }
+  .led-active {
+    background: hsl(var(--primary));
+    box-shadow:
+      0 0 6px hsl(var(--primary) / 0.9),
+      0 0 2px hsl(var(--primary));
+  }
+  .led-live {
+    background: hsl(var(--live));
+    box-shadow:
+      0 0 7px hsl(var(--live) / 0.95),
+      0 0 2px hsl(var(--live));
+  }
+  .led-danger {
+    background: hsl(var(--destructive));
+    box-shadow: 0 0 6px hsl(var(--destructive) / 0.8);
+  }
+
+  .brass-divider {
+    height: 1px;
+    background: linear-gradient(
+      90deg,
+      transparent,
+      hsl(var(--primary) / 0.45) 15%,
+      hsl(var(--primary) / 0.45) 85%,
+      transparent
+    );
+  }
+
+  /* Riveted strip for headers. */
+  .rivets {
+    position: relative;
+  }
+  .rivets::before,
+  .rivets::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    width: 4px;
+    height: 4px;
+    border-radius: 9999px;
+    transform: translateY(-50%);
+    background: radial-gradient(circle at 30% 30%, hsl(var(--primary)), hsl(var(--primary) / 0.2));
+    box-shadow: 0 0 3px hsl(var(--primary) / 0.5);
+  }
+  .rivets::before {
+    left: 9px;
+  }
+  .rivets::after {
+    right: 9px;
+  }
+
+  /* Text with a faint phosphor glow — used sparingly on the wordmark/readouts. */
+  .phosphor {
+    text-shadow: 0 0 10px hsl(var(--primary) / 0.45);
+  }
+
+  /* Hover glow for interactive instruments. */
+  .glow-hover {
+    transition:
+      box-shadow 0.18s ease,
+      border-color 0.18s ease,
+      background-color 0.18s ease,
+      color 0.18s ease;
+  }
+  .glow-hover:hover {
+    box-shadow: 0 0 0 1px hsl(var(--primary) / 0.5), 0 0 18px -4px hsl(var(--primary) / 0.5);
+  }
+}
+
+@layer utilities {
+  /* Full-screen CRT scanline veil (sits under modals). */
+  .crt-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 45;
+    pointer-events: none;
+    background: repeating-linear-gradient(
+      to bottom,
+      transparent 0 2px,
+      rgb(0 0 0 / 0.16) 2px 3px
+    );
+    mix-blend-mode: multiply;
+    opacity: 0.3;
+  }
+  :root .crt-overlay {
+    opacity: 0.12;
+  }
+
+  .caret-blink::after {
+    content: '▊';
+    margin-left: 2px;
+    color: hsl(var(--primary));
+    animation: caret 1.05s steps(1) infinite;
+  }
+}
+
+/* Frameless window: the top bar is the draggable title region; interactive
+   elements inside it opt out so they stay clickable. */
+.titlebar-drag {
+  -webkit-app-region: drag;
+}
+.titlebar-drag button,
+.titlebar-drag input,
+.titlebar-drag select,
+.titlebar-drag label,
+.titlebar-drag a,
+.no-drag {
+  -webkit-app-region: no-drag;
+}
+
+/* xterm sizes itself via the fit addon — don't force width/height or padding on
+   it, both corrupt row hit-testing. Just theme the scrollbar. */
+.xterm-viewport::-webkit-scrollbar-thumb {
+  background: hsl(var(--primary) / 0.4);
+}
+
+@keyframes caret {
+  0%,
+  50% {
+    opacity: 1;
+  }
+  50.01%,
+  100% {
+    opacity: 0;
+  }
+}
+@keyframes led-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.45;
+  }
+}
+@keyframes boot-wipe {
+  0% {
+    transform: translateY(-100%);
+    opacity: 0.9;
+  }
+  100% {
+    transform: translateY(120%);
+    opacity: 0;
+  }
+}
+@keyframes boot-fade {
+  0%,
+  70% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    visibility: hidden;
+  }
+}
+@keyframes flicker {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  48% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.72;
+  }
+  52% {
+    opacity: 1;
+  }
+}
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@keyframes panel-in {
+  from {
+    opacity: 0;
+    transform: translateX(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* Honour reduced-motion: kill ambient + orchestrated motion, keep it usable. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+  .crt-overlay {
+    display: none;
+  }
+}

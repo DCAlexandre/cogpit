@@ -1,0 +1,78 @@
+{
+  "name": "cogpit",
+  "version": "0.1.0",
+  "description": "A steampunk cockpit for your Claude Code sessions — browse, resume and clean up every CLI conversation from one window.",
+  "author": "Alexandre Da Costa",
+  "license": "MIT",
+  "main": "./out/main/index.js",
+  "homepage": "https://github.com/DCAlexandre/cogpit",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/DCAlexandre/cogpit.git"
+  },
+  "bugs": {
+    "url": "https://github.com/DCAlexandre/cogpit/issues"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "keywords": [
+    "claude",
+    "claude-code",
+    "cli",
+    "sessions",
+    "electron",
+    "terminal",
+    "ai"
+  ],
+  "scripts": {
+    "start": "electron-vite dev",
+    "dev": "electron-vite dev",
+    "preview": "electron-vite preview",
+    "build": "electron-vite build",
+    "typecheck": "tsc --noEmit -p tsconfig.web.json && tsc --noEmit -p tsconfig.node.json",
+    "setup:terminal": "node scripts/setup-terminal.cjs",
+    "rebuild": "electron-rebuild -f -w @homebridge/node-pty-prebuilt-multiarch",
+    "gen:icon": "node scripts/gen-icon.cjs",
+    "dist": "electron-vite build && electron-builder",
+    "dist:win": "electron-vite build && electron-builder --win",
+    "dist:linux": "electron-vite build && electron-builder --linux"
+  },
+  "dependencies": {
+    "@xterm/addon-canvas": "^0.7.0",
+    "@xterm/addon-fit": "^0.10.0",
+    "@xterm/xterm": "^5.5.0",
+    "chokidar": "^3.6.0",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "lucide-react": "^0.468.0",
+    "tailwind-merge": "^2.6.0"
+  },
+  "optionalDependencies": {
+    "@homebridge/node-pty-prebuilt-multiarch": "^0.14.1"
+  },
+  "devDependencies": {
+    "@electron/rebuild": "^3.7.0",
+    "@types/node": "^22.10.0",
+    "@types/react": "^18.3.0",
+    "@types/react-dom": "^18.3.0",
+    "@vitejs/plugin-react": "^4.3.4",
+    "autoprefixer": "^10.4.20",
+    "electron": "^33.3.0",
+    "electron-builder": "^25.1.8",
+    "electron-vite": "^2.3.0",
+    "postcss": "^8.4.49",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "tailwindcss": "^3.4.17",
+    "typescript": "^5.7.2",
+    "vite": "^5.4.11"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "electron",
+      "esbuild",
+      "@homebridge/node-pty-prebuilt-multiarch"
+    ]
+  }
+}
