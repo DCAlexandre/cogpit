@@ -11,6 +11,15 @@ files:
   - '!{README.md,SECURITY.md}'
 asarUnpack:
   - '**/node_modules/@homebridge/node-pty-prebuilt-multiarch/**'
+# Ship the licenses alongside the binary: the SIL OFL requires the bundled
+# fonts' license to accompany them when redistributed.
+extraResources:
+  - from: LICENSE
+    to: LICENSE
+  - from: THIRD-PARTY-LICENSES.md
+    to: THIRD-PARTY-LICENSES.md
+  - from: src/renderer/src/assets/fonts/OFL.txt
+    to: fonts/OFL.txt
 win:
   target:
     - nsis
