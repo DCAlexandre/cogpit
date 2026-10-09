@@ -1,5 +1,5 @@
 import { ipcMain, shell, app, dialog, clipboard, BrowserWindow, type IpcMainInvokeEvent } from 'electron'
-import { existsSync } from 'fs'
+import { access } from 'fs/promises'
 import { homedir } from 'os'
 import { isAbsolute, join } from 'path'
 import { claudeCodeAdapter } from './adapters/claudeCode'
@@ -162,14 +162,26 @@ export function registerIpc(): void {
   })
   // Resolve a terminal-detected path candidate (absolute, ~, or cwd-relative) and
   // return its absolute path IF it exists — so only real files/dirs become links.
-  handle('fs:resolvePath', (_e, cwd: string | null, candidate: string): string | null => {
+  handle('fs:resolvePath', async (_e, cwd: string | null, candidate: string): Promise<string | null> => {
     try {
       let p = candidate.startsWith('~') ? join(homedir(), candidate.slice(1)) : candidate
       if (!isAbsolute(p)) {
         if (!cwd) return null
         p = join(cwd, p)
       }
-      return existsSync(p) ? p : null
+      // NEVER probe UNC / network paths: a dead SMB share makes the fs call block for
+      // ~21s and freeze the whole app (this fires on every terminal hover). Reject them.
+      if (p.startsWith('\\\\') || p.startsWith('//')) return null
+      // Async existence check with a hard timeout, so a slow/offline local path can
+      // never stall the main process either.
+      const exists = await Promise.race([
+        access(p).then(
+          () => true,
+          () => false
+        ),
+        new Promise<boolean>((resolve) => setTimeout(() => resolve(false), 400))
+      ])
+      return exists ? p : null
     } catch {
       return null
     }

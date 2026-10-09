@@ -6,7 +6,7 @@ import type { IBufferRange, ILink, ILinkProvider, Terminal } from '@xterm/xterm'
 // (resolved against the session cwd) before it becomes a link, so non-files such as
 // "console.log" or "1.0.0" never underline.
 const LINK_RE =
-  /(?<![A-Za-z])(?:[A-Za-z]:[\\/]|\\\\|\/|~\/)[^\s"'<>()[\]{}|]+|(?<![\w.-])(?:\.{0,2}[\\/])?(?:[\w.-]+[\\/])*[\w.-]+\.[A-Za-z0-9]{1,10}/g
+  /(?<![A-Za-z])(?:[A-Za-z]:[\\/]|\/|~\/)[^\s"'<>()[\]{}|]+|(?<![\w.-])(?:\.{0,2}[\\/])?(?:[\w.-]+[\\/])*[\w.-]+\.[A-Za-z0-9]{1,10}/g
 
 /** Link provider for file paths — absolute or cwd-relative — that actually exist.
  *  Opening is gated on a modifier (Ctrl/Cmd). A trailing `:line:col` is stripped. */
