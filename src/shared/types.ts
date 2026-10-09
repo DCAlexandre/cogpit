@@ -185,6 +185,9 @@ export interface CogpitApi {
   }
   openPath(path: string): Promise<string>
   showItem(path: string): Promise<void>
+  openUrl(url: string): Promise<void>
+  /** Resolve a path candidate against cwd; returns the absolute path if it exists. */
+  resolvePath(cwd: string | null, candidate: string): Promise<string | null>
   openInIde(cwd: string): Promise<boolean>
   pickFolder(): Promise<string | null>
   clipboard: {

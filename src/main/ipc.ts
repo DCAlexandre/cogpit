@@ -1,4 +1,7 @@
 import { ipcMain, shell, app, dialog, clipboard, BrowserWindow, type IpcMainInvokeEvent } from 'electron'
+import { existsSync } from 'fs'
+import { homedir } from 'os'
+import { isAbsolute, join } from 'path'
 import { claudeCodeAdapter } from './adapters/claudeCode'
 import type { ParsedSession, SessionAdapter } from './adapters/types'
 import { scanAll, readTranscript, contentSearch } from './lib/sessions'
@@ -148,8 +151,29 @@ export function registerIpc(): void {
   handle('pty:resize', (_e, id: string, cols: number, rows: number) => resizePty(id, cols, rows))
   handle('pty:kill', (_e, id: string) => killPty(id))
 
-  handle('shell:openPath', (_e, path: string) => shell.openPath(path))
+  handle('shell:openPath', (_e, p: string) =>
+    shell.openPath(p.startsWith('~') ? join(homedir(), p.slice(1)) : p)
+  )
   handle('shell:showItem', (_e, path: string) => shell.showItemInFolder(path))
+  // Only http(s) — never hand arbitrary schemes from terminal output to the OS.
+  handle('shell:openUrl', (_e, url: string) => {
+    if (/^https?:\/\//i.test(url)) return shell.openExternal(url)
+    return Promise.resolve()
+  })
+  // Resolve a terminal-detected path candidate (absolute, ~, or cwd-relative) and
+  // return its absolute path IF it exists — so only real files/dirs become links.
+  handle('fs:resolvePath', (_e, cwd: string | null, candidate: string): string | null => {
+    try {
+      let p = candidate.startsWith('~') ? join(homedir(), candidate.slice(1)) : candidate
+      if (!isAbsolute(p)) {
+        if (!cwd) return null
+        p = join(cwd, p)
+      }
+      return existsSync(p) ? p : null
+    } catch {
+      return null
+    }
+  })
   handle('ide:open', (_e, cwd: string) => openInIde(cwd))
 
   handle('clipboard:read', () => clipboard.readText())

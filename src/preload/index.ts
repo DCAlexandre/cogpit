@@ -45,6 +45,8 @@ const api: CogpitApi = {
   },
   openPath: (path) => ipcRenderer.invoke('shell:openPath', path),
   showItem: (path) => ipcRenderer.invoke('shell:showItem', path),
+  openUrl: (url) => ipcRenderer.invoke('shell:openUrl', url),
+  resolvePath: (cwd, candidate) => ipcRenderer.invoke('fs:resolvePath', cwd, candidate),
   openInIde: (cwd) => ipcRenderer.invoke('ide:open', cwd),
   pickFolder: () => ipcRenderer.invoke('dialog:pickFolder'),
   clipboard: {

@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Terminal } from '@xterm/xterm'
 import { FitAddon } from '@xterm/addon-fit'
+import { WebLinksAddon } from '@xterm/addon-web-links'
 import { Copy, ExternalLink, Check, TerminalSquare } from 'lucide-react'
 import type { TerminalTarget } from '@shared/types'
 import { Button } from './ui/button'
 import { useT } from '@/lib/i18n'
+import { pathLinkProvider } from '@/lib/terminalLinks'
 
 interface Props {
   target: TerminalTarget
@@ -130,6 +132,25 @@ function IntegratedTerminal({
     termRef.current = term
     fitRef.current = fit
 
+    // Clickable links: URLs (web-links addon) + absolute file paths (custom provider).
+    // Ctrl/Cmd+click opens; a plain click stays a normal click (so text selection and
+    // the TUI's own mouse handling are untouched).
+    const wantsOpen = (e: MouseEvent): boolean => e.ctrlKey || e.metaKey
+    term.loadAddon(
+      new WebLinksAddon((e, uri) => {
+        if (wantsOpen(e)) void window.api.openUrl(uri)
+      })
+    )
+    const linkProvider = term.registerLinkProvider(
+      pathLinkProvider(
+        term,
+        () => activeTarget.cwd ?? activeTarget.session?.cwd ?? null,
+        (cwd, candidate) => window.api.resolvePath(cwd, candidate),
+        (p) => void window.api.openPath(p),
+        wantsOpen
+      )
+    )
+
     const offData = window.api.pty.onData(({ id, data }) => {
       if (id === ptyIdRef.current) term.write(data)
     })
@@ -250,6 +271,7 @@ function IntegratedTerminal({
       offData()
       offExit()
       onInput.dispose()
+      linkProvider.dispose()
       if (ptyIdRef.current) {
         window.api.log('debug', 'terminal', 'unmount: kill pty', { ptyId: ptyIdRef.current })
         void window.api.pty.kill(ptyIdRef.current)
