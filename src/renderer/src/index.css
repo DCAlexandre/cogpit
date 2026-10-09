@@ -110,6 +110,16 @@
   [data-scale='lg'] #root {
     zoom: 1.12;
   }
+  /* xterm's mouse hit-testing and fit math break under an ancestor CSS `zoom`, so
+     counter-zoom the terminal host back to an effective 1.0 (zoom compounds, so the
+     factor is 1 / the #root zoom). The terminal keeps its own font size; only the
+     coordinate space is corrected. */
+  [data-scale='sm'] .xterm-host {
+    zoom: 1.086957;
+  }
+  [data-scale='lg'] .xterm-host {
+    zoom: 0.892857;
+  }
 
   * {
     @apply border-border;
