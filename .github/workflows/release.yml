@@ -1,0 +1,62 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch: # manual run: builds installers as artifacts, does NOT publish
+
+permissions:
+  contents: write # required to create the GitHub Release and upload assets
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            platform: win
+          - os: ubuntu-latest
+            platform: linux
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build renderer + main
+        run: pnpm run build
+
+      # On a tag push -> publish to a GitHub Release (draft) via electron-builder.
+      # On a manual dispatch -> build only (no publish), artifacts uploaded below.
+      - name: Package ${{ matrix.platform }}
+        run: pnpm exec electron-builder --${{ matrix.platform }} --publish ${{ github.ref_type == 'tag' && 'always' || 'never' }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload installers as workflow artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: cogpit-${{ matrix.platform }}
+          path: |
+            dist/*.exe
+            dist/*.AppImage
+          if-no-files-found: ignore
