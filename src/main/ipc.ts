@@ -14,6 +14,7 @@ import {
   emptyTrash
 } from './lib/trash'
 import { setCustom, setProjectHidden, getSettings, setSettings, type SessionCustom, type Settings } from './lib/meta'
+import { refreshTrayMenu } from './lib/tray'
 import { openExternalTerminal } from './lib/terminal'
 import { createPty, writePty, resizePty, killPty, ptyStatus } from './lib/pty'
 import { detectIde, openInIde } from './lib/ide'
@@ -122,7 +123,11 @@ export function registerIpc(): void {
   handle('meta:setProjectHidden', (_e, projectDir: string, hidden: boolean) => setProjectHidden(projectDir, hidden))
 
   handle('settings:get', () => getSettings())
-  handle('settings:set', (_e, patch: Partial<Settings>) => setSettings(patch))
+  handle('settings:set', async (_e, patch: Partial<Settings>) => {
+    const next = await setSettings(patch)
+    void refreshTrayMenu() // tray labels follow the language setting
+    return next
+  })
 
   handle('terminal:spec', (_e, target: TerminalTarget) => specFor(target))
   handle('terminal:external', (_e, target: TerminalTarget) => openExternalTerminal(specFor(target)))

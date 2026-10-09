@@ -1,4 +1,4 @@
-import { app, shell, BrowserWindow, Tray, Menu, nativeImage } from 'electron'
+import { app, shell, BrowserWindow, nativeImage } from 'electron'
 import { join } from 'path'
 import { existsSync } from 'fs'
 import { writeFile } from 'fs/promises'
@@ -7,9 +7,9 @@ import { claudeCodeAdapter } from './adapters/claudeCode'
 import { startWatcher, stopWatcher } from './lib/watcher'
 import { killAllPty, ptyStatus } from './lib/pty'
 import { initLogger, logger } from './lib/logger'
+import { createTray, hasTray } from './lib/tray'
 
 let mainWindow: BrowserWindow | null = null
-let tray: Tray | null = null
 let quitting = false
 
 const iconPath = join(__dirname, '../../resources/icon.png')
@@ -73,7 +73,7 @@ function createWindow(): void {
 
   // Minimise-to-tray: closing hides the window unless we're really quitting.
   mainWindow.on('close', (e) => {
-    if (!quitting && tray) {
+    if (!quitting && hasTray()) {
       e.preventDefault()
       mainWindow?.hide()
     }
@@ -144,30 +144,6 @@ function showWindow(): void {
   }
 }
 
-function createTray(): void {
-  try {
-    tray = new Tray(appIcon().resize({ width: 16, height: 16 }))
-    tray.setToolTip('Cogpit — Claude Code sessions')
-    tray.setContextMenu(
-      Menu.buildFromTemplate([
-        { label: 'Open Cogpit', click: showWindow },
-        { type: 'separator' },
-        {
-          label: 'Quit',
-          click: () => {
-            quitting = true
-            app.quit()
-          }
-        }
-      ])
-    )
-    tray.on('click', showWindow)
-    tray.on('double-click', showWindow)
-  } catch {
-    tray = null
-  }
-}
-
 function notifySessionsChanged(): void {
   if (mainWindow && !mainWindow.isDestroyed()) {
     logger.debug('watcher', 'sessions changed → notify renderer')
@@ -189,7 +165,13 @@ if (!gotLock) {
     logger.info('app', 'ready', { pty: ptyStatus(), claudeRoot: claudeCodeAdapter.rootDir() })
     registerIpc()
     createWindow()
-    createTray()
+    void createTray(appIcon(), {
+      onOpen: showWindow,
+      onQuit: () => {
+        quitting = true
+        app.quit()
+      }
+    })
     startWatcher(claudeCodeAdapter.rootDir(), notifySessionsChanged)
     logger.info('watcher', 'started', { root: claudeCodeAdapter.rootDir() })
 
@@ -207,6 +189,6 @@ if (!gotLock) {
 
   // With a tray we deliberately keep running after all windows close.
   app.on('window-all-closed', () => {
-    if (!tray && process.platform !== 'darwin') app.quit()
+    if (!hasTray() && process.platform !== 'darwin') app.quit()
   })
 }
