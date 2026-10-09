@@ -1,0 +1,46 @@
+name: Bug report
+description: Report a problem with Cogpit
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: Thanks for taking the time to file a bug! Please fill in as much as you can.
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: A clear description of the bug and what you expected to happen instead.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. ...
+        2. ...
+        3. ...
+    validations:
+      required: true
+  - type: input
+    id: os
+    attributes:
+      label: OS / version
+      placeholder: "Windows 11 23H2 / macOS 14.5 / Ubuntu 24.04"
+    validations:
+      required: true
+  - type: input
+    id: cogpit-version
+    attributes:
+      label: Cogpit version
+      placeholder: "e.g. 0.1.0"
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs / screenshots
+      description: Relevant logs or screenshots. NEVER paste private session content or secrets.
+      render: shell
+    validations:
+      required: false

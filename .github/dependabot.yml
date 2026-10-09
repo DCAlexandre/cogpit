@@ -1,0 +1,23 @@
+version: 2
+updates:
+  # JavaScript / TypeScript deps (Dependabot reads pnpm-lock.yaml via the npm ecosystem)
+  - package-ecosystem: npm
+    directory: "/"
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 10
+    commit-message:
+      prefix: "chore(deps)"
+    groups:
+      # one grouped PR instead of many, to keep noise down
+      dependencies:
+        patterns:
+          - "*"
+
+  # Keep GitHub Actions pinned versions up to date
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: "chore(ci)"
