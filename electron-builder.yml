@@ -1,5 +1,8 @@
 appId: dev.cogpit.app
 productName: Cogpit
+# node-pty ships N-API prebuilt binaries; don't let electron-builder try to
+# recompile it from source (that needs a C++ toolchain and fails on CI runners).
+npmRebuild: false
 directories:
   buildResources: resources
   output: dist
