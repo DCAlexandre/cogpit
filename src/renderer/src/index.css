@@ -120,6 +120,22 @@
   [data-scale='lg'] .xterm-host {
     zoom: 0.892857;
   }
+  /* The #root zoom scales the WHOLE app, so a plain 100vh shell renders taller than
+     the viewport (zoom > 1) and its bottom — the stats bar + end of the lists — is
+     pushed off-screen. Compensate: the shell is 100vh / zoom tall, which renders back
+     to exactly one viewport. (--ui-zoom mirrors the #root zoom per scale.) */
+  :root {
+    --ui-zoom: 1;
+  }
+  [data-scale='sm'] {
+    --ui-zoom: 0.92;
+  }
+  [data-scale='lg'] {
+    --ui-zoom: 1.12;
+  }
+  .app-shell {
+    height: calc(100vh / var(--ui-zoom, 1));
+  }
 
   * {
     @apply border-border;

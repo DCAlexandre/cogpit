@@ -69,6 +69,8 @@ export default function App(): JSX.Element {
     document.documentElement.lang = locale
   }, [locale])
 
+
+
   const rescan = useCallback(async () => {
     setScanning(true)
     try {
@@ -420,7 +422,7 @@ export default function App(): JSX.Element {
 
   return (
     <LocaleContext.Provider value={locale}>
-    <div className="flex h-screen flex-col overflow-hidden bg-background">
+    <div className="app-shell flex flex-col overflow-hidden bg-background">
       <div className="crt-overlay" aria-hidden />
       <BootSequence />
       <TopBar
