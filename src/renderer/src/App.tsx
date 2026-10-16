@@ -102,8 +102,10 @@ export default function App(): JSX.Element {
   useEffect(() => {
     if (restoredRef.current || !scan || !appInfo) return
     restoredRef.current = true
-    if (!appInfo.pty.available) {
-      hydratedRef.current = true // external mode: nothing to restore, but allow future saves
+    // No pty backend, or an older/desynced preload without the terminals bridge:
+    // nothing to restore, but still allow future saves once the bridge is present.
+    if (!appInfo.pty.available || !window.api.terminals) {
+      hydratedRef.current = true
       return
     }
     window.api.terminals.get().then(async (state) => {
@@ -118,7 +120,7 @@ export default function App(): JSX.Element {
         }
       }
       if (rebuilt.length) {
-        await window.api.pty.killAll() // drop ptys orphaned by the previous renderer instance
+        await window.api.pty.killAll?.() // drop ptys orphaned by the previous renderer instance
         termCounter.current = rebuilt.reduce((m, t) => Math.max(m, Number(t.key.replace('term-', '')) || 0), 0)
         setTerminals(rebuilt)
         setActiveTermKey(rebuilt.some((t) => t.key === state.activeKey) ? state.activeKey : rebuilt[0].key)
@@ -129,7 +131,7 @@ export default function App(): JSX.Element {
 
   // Persist the open dock terminals so they survive a renderer reload / app restart.
   useEffect(() => {
-    if (!hydratedRef.current) return
+    if (!hydratedRef.current || !window.api.terminals) return
     void window.api.terminals.save({
       list: terminals.map((term) => ({
         key: term.key,
