@@ -32,6 +32,10 @@ const api: CogpitApi = {
   setProjectHidden: (projectDir, hidden) => ipcRenderer.invoke('meta:setProjectHidden', projectDir, hidden),
   getSettings: () => ipcRenderer.invoke('settings:get'),
   setSettings: (patch: Partial<Settings>) => ipcRenderer.invoke('settings:set', patch),
+  terminals: {
+    get: () => ipcRenderer.invoke('terminals:get'),
+    save: (state) => ipcRenderer.invoke('terminals:save', state)
+  },
   terminalSpec: (target: TerminalTarget) => ipcRenderer.invoke('terminal:spec', target),
   openExternal: (target: TerminalTarget) => ipcRenderer.invoke('terminal:external', target),
   pty: {
@@ -40,6 +44,7 @@ const api: CogpitApi = {
     write: (id, data) => ipcRenderer.invoke('pty:write', id, data),
     resize: (id, cols, rows) => ipcRenderer.invoke('pty:resize', id, cols, rows),
     kill: (id) => ipcRenderer.invoke('pty:kill', id),
+    killAll: () => ipcRenderer.invoke('pty:killAll'),
     onData: (cb: (e: PtyDataEvent) => void) => subscribe('pty:data', cb),
     onExit: (cb: (e: PtyExitEvent) => void) => subscribe('pty:exit', cb)
   },

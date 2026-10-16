@@ -13,10 +13,10 @@ import {
   deleteFromTrash,
   emptyTrash
 } from './lib/trash'
-import { setCustom, setProjectHidden, getSettings, setSettings, type SessionCustom, type Settings } from './lib/meta'
+import { setCustom, setProjectHidden, getSettings, setSettings, getTerminals, setTerminals, type SessionCustom, type Settings, type TerminalState } from './lib/meta'
 import { refreshTrayMenu } from './lib/tray'
 import { openExternalTerminal } from './lib/terminal'
-import { createPty, writePty, resizePty, killPty, ptyStatus } from './lib/pty'
+import { createPty, writePty, resizePty, killPty, killAllPty, ptyStatus } from './lib/pty'
 import { detectIde, openInIde } from './lib/ide'
 import { logger } from './lib/logger'
 
@@ -123,6 +123,8 @@ export function registerIpc(): void {
   handle('meta:setProjectHidden', (_e, projectDir: string, hidden: boolean) => setProjectHidden(projectDir, hidden))
 
   handle('settings:get', () => getSettings())
+  handle('terminals:get', () => getTerminals())
+  handle('terminals:save', (_e, state: TerminalState) => setTerminals(state))
   handle('settings:set', async (_e, patch: Partial<Settings>) => {
     const next = await setSettings(patch)
     void refreshTrayMenu() // tray labels follow the language setting
@@ -133,6 +135,7 @@ export function registerIpc(): void {
   handle('terminal:external', (_e, target: TerminalTarget) => openExternalTerminal(specFor(target)))
 
   handle('pty:status', () => ptyStatus())
+  handle('pty:killAll', () => killAllPty())
   handle('pty:create', (e: IpcMainInvokeEvent, target: TerminalTarget, size?: { cols: number; rows: number }) => {
     const spec = specFor(target)
     const sender = e.sender
