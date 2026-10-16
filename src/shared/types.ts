@@ -137,6 +137,20 @@ export interface TerminalTarget {
   cwd?: string
 }
 
+/** A dock terminal persisted across restarts/reloads — enough to re-create it. */
+export interface PersistedTerminal {
+  key: string
+  kind: 'resume' | 'new'
+  sessionId?: string
+  cwd?: string
+  title: string
+}
+
+export interface TerminalState {
+  list: PersistedTerminal[]
+  activeKey: string | null
+}
+
 export interface TrashPayload {
   filePath: string
   projectDir: string
@@ -172,6 +186,10 @@ export interface CogpitApi {
   setProjectHidden(projectDir: string, hidden: boolean): Promise<void>
   getSettings(): Promise<Settings>
   setSettings(patch: Partial<Settings>): Promise<Settings>
+  terminals: {
+    get(): Promise<TerminalState>
+    save(state: TerminalState): Promise<void>
+  }
   terminalSpec(target: TerminalTarget): Promise<ResumeSpec>
   openExternal(target: TerminalTarget): Promise<LaunchResult>
   pty: {
@@ -180,6 +198,7 @@ export interface CogpitApi {
     write(id: string, data: string): Promise<void>
     resize(id: string, cols: number, rows: number): Promise<void>
     kill(id: string): Promise<void>
+    killAll(): Promise<void>
     onData(cb: (e: PtyDataEvent) => void): () => void
     onExit(cb: (e: PtyExitEvent) => void): () => void
   }

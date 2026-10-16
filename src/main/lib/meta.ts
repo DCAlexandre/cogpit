@@ -31,11 +31,26 @@ export interface Settings {
   confirmPermanentDelete: boolean
 }
 
+/** A dock terminal persisted across restarts — enough to re-create it. */
+export interface PersistedTerminal {
+  key: string
+  kind: 'resume' | 'new'
+  sessionId?: string
+  cwd?: string
+  title: string
+}
+
+export interface TerminalState {
+  list: PersistedTerminal[]
+  activeKey: string | null
+}
+
 interface MetaStore {
   version: 1
   sessions: Record<string, SessionCustom>
   hiddenProjects: string[]
   settings: Settings
+  terminals: TerminalState
 }
 
 const DEFAULT_SETTINGS: Settings = {
@@ -53,6 +68,8 @@ const DEFAULT_SETTINGS: Settings = {
   confirmPermanentDelete: true
 }
 
+const DEFAULT_TERMINALS: TerminalState = { list: [], activeKey: null }
+
 let store: MetaStore | null = null
 
 function metaPath(): string {
@@ -66,7 +83,8 @@ export async function loadMeta(): Promise<MetaStore> {
     version: 1,
     sessions: loaded.sessions ?? {},
     hiddenProjects: loaded.hiddenProjects ?? [],
-    settings: { ...DEFAULT_SETTINGS, ...(loaded.settings ?? {}) }
+    settings: { ...DEFAULT_SETTINGS, ...(loaded.settings ?? {}) },
+    terminals: loaded.terminals ?? DEFAULT_TERMINALS
   }
   return store
 }
@@ -115,4 +133,14 @@ export async function setSettings(patch: Partial<Settings>): Promise<Settings> {
   s.settings = { ...s.settings, ...patch }
   await persist()
   return s.settings
+}
+
+export async function getTerminals(): Promise<TerminalState> {
+  return (await loadMeta()).terminals
+}
+
+export async function setTerminals(state: TerminalState): Promise<void> {
+  const s = await loadMeta()
+  s.terminals = state
+  await persist()
 }
