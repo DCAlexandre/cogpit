@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { X, ChevronDown, ChevronUp, TerminalSquare } from 'lucide-react'
 import type { TerminalTarget } from '@shared/types'
 import { TerminalView } from './TerminalView'
@@ -19,6 +19,7 @@ interface Props {
   collapsed: boolean
   onActivate: (key: string) => void
   onClose: (key: string) => void
+  onReorder: (fromKey: string, toKey: string) => void
   onToggleCollapse: () => void
 }
 
@@ -34,12 +35,15 @@ export function TerminalDock({
   collapsed,
   onActivate,
   onClose,
+  onReorder,
   onToggleCollapse
 }: Props): JSX.Element {
   const t = useT()
   const [height, setHeight] = useState(340)
   const [maxPane, setMaxPane] = useState(() => Math.max(160, window.innerHeight - CHROME))
   const [resizing, setResizing] = useState(false)
+  const dragKey = useRef<string | null>(null)
+  const [dragOverKey, setDragOverKey] = useState<string | null>(null)
 
   useEffect(() => {
     const onResize = (): void => setMaxPane(Math.max(160, window.innerHeight - CHROME))
@@ -90,12 +94,37 @@ export function TerminalDock({
             return (
               <div
                 key={term.key}
+                draggable
                 onClick={() => onActivate(term.key)}
+                onDragStart={(e) => {
+                  dragKey.current = term.key
+                  e.dataTransfer.effectAllowed = 'move'
+                  e.dataTransfer.setData('text/plain', term.key)
+                }}
+                onDragOver={(e) => {
+                  if (!dragKey.current || dragKey.current === term.key) return
+                  e.preventDefault()
+                  e.dataTransfer.dropEffect = 'move'
+                  if (dragOverKey !== term.key) setDragOverKey(term.key)
+                }}
+                onDragLeave={() => setDragOverKey((k) => (k === term.key ? null : k))}
+                onDrop={(e) => {
+                  e.preventDefault()
+                  const from = dragKey.current
+                  dragKey.current = null
+                  setDragOverKey(null)
+                  if (from && from !== term.key) onReorder(from, term.key)
+                }}
+                onDragEnd={() => {
+                  dragKey.current = null
+                  setDragOverKey(null)
+                }}
                 className={cn(
                   'group flex h-[26px] shrink-0 cursor-pointer items-center gap-1.5 rounded-sm border px-2 font-mono text-[11px] transition-colors',
                   on
                     ? 'border-live/50 bg-live/10 text-live'
-                    : 'border-transparent text-muted-foreground hover:bg-muted hover:text-foreground'
+                    : 'border-transparent text-muted-foreground hover:bg-muted hover:text-foreground',
+                  dragOverKey === term.key && 'ring-1 ring-primary/70'
                 )}
                 title={term.title}
               >

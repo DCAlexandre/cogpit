@@ -60,6 +60,8 @@ export default function App(): JSX.Element {
   const terminalsRef = useRef<OpenTerminal[]>([])
   terminalsRef.current = terminals
   const termCounter = useRef(0)
+  const hydratedRef = useRef(false)
+  const restoredRef = useRef(false)
 
   // Active locale: the explicit setting, or the device language when "auto".
   const locale = settings ? resolveLocale(settings.language) : deviceLocale()
@@ -92,6 +94,55 @@ export default function App(): JSX.Element {
     })
     void rescan()
   }, [rescan])
+
+  // Restore the dock terminals persisted from a previous run/reload (sleep wipes the
+  // renderer and closes every tab). Runs once, after the first scan + app info are in —
+  // we need the session list to rebuild "resume" targets. Re-spawns the ptys, so a
+  // resumed tab re-runs `claude --resume <id>` and the conversation comes back.
+  useEffect(() => {
+    if (restoredRef.current || !scan || !appInfo) return
+    restoredRef.current = true
+    // No pty backend, or an older/desynced preload without the terminals bridge:
+    // nothing to restore, but still allow future saves once the bridge is present.
+    if (!appInfo.pty.available || !window.api.terminals) {
+      hydratedRef.current = true
+      return
+    }
+    window.api.terminals.get().then(async (state) => {
+      const rebuilt: OpenTerminal[] = []
+      for (const pt of state.list) {
+        if (pt.kind === 'resume') {
+          const session = scan.sessions.find((s) => s.id === pt.sessionId)
+          if (!session) continue // session gone → drop the tab
+          rebuilt.push({ key: pt.key, target: { kind: 'resume', session }, title: pt.title, sessionId: pt.sessionId })
+        } else {
+          rebuilt.push({ key: pt.key, target: { kind: 'new', cwd: pt.cwd }, title: pt.title })
+        }
+      }
+      if (rebuilt.length) {
+        await window.api.pty.killAll?.() // drop ptys orphaned by the previous renderer instance
+        termCounter.current = rebuilt.reduce((m, t) => Math.max(m, Number(t.key.replace('term-', '')) || 0), 0)
+        setTerminals(rebuilt)
+        setActiveTermKey(rebuilt.some((t) => t.key === state.activeKey) ? state.activeKey : rebuilt[0].key)
+      }
+      hydratedRef.current = true
+    })
+  }, [scan, appInfo])
+
+  // Persist the open dock terminals so they survive a renderer reload / app restart.
+  useEffect(() => {
+    if (!hydratedRef.current || !window.api.terminals) return
+    void window.api.terminals.save({
+      list: terminals.map((term) => ({
+        key: term.key,
+        kind: term.target.kind,
+        sessionId: term.sessionId,
+        cwd: term.target.cwd,
+        title: term.title
+      })),
+      activeKey: activeTermKey
+    })
+  }, [terminals, activeTermKey])
 
   // Re-apply the theme when the OS scheme changes and we're following the system.
   useEffect(() => {
@@ -198,6 +249,20 @@ export default function App(): JSX.Element {
       if (active !== key) return active
       if (next.length === 0) return null
       return next[Math.min(idx, next.length - 1)].key
+    })
+  }, [])
+
+  // Drag & drop tab reorder. Keys are stable, so moving an item in the array never
+  // unmounts a TerminalView → the ptys keep running.
+  const reorderTerminals = useCallback((fromKey: string, toKey: string) => {
+    setTerminals((cur) => {
+      const from = cur.findIndex((term) => term.key === fromKey)
+      const to = cur.findIndex((term) => term.key === toKey)
+      if (from === -1 || to === -1 || from === to) return cur
+      const next = [...cur]
+      const [moved] = next.splice(from, 1)
+      next.splice(to, 0, moved)
+      return next
     })
   }, [])
 
@@ -514,6 +579,7 @@ export default function App(): JSX.Element {
           collapsed={dockCollapsed}
           onActivate={activateTerminal}
           onClose={closeTerminal}
+          onReorder={reorderTerminals}
           onToggleCollapse={() => setDockCollapsed((c) => !c)}
         />
       )}
