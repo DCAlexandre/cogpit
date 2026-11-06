@@ -11,6 +11,9 @@ export interface OpenTerminal {
   target: TerminalTarget
   title: string
   sessionId?: string
+  /** Epoch ms when this tab was opened/restored. A "new" tab uses it to only
+   *  adopt a conversation Claude created AFTER it started (promotion, see App). */
+  openedAt?: number
 }
 
 interface Props {
