@@ -116,7 +116,10 @@ export default function App(): JSX.Element {
           if (!session) continue // session gone → drop the tab
           rebuilt.push({ key: pt.key, target: { kind: 'resume', session }, title: pt.title, sessionId: pt.sessionId })
         } else {
-          rebuilt.push({ key: pt.key, target: { kind: 'new', cwd: pt.cwd }, title: pt.title })
+          // Restored "new" tab: re-runs plain `claude`, which will mint a fresh
+          // conversation. Stamp openedAt = now so promotion only ever adopts that
+          // new one, never a pre-sleep session living in the same folder.
+          rebuilt.push({ key: pt.key, target: { kind: 'new', cwd: pt.cwd }, title: pt.title, openedAt: Date.now() })
         }
       }
       if (rebuilt.length) {
@@ -143,6 +146,45 @@ export default function App(): JSX.Element {
       activeKey: activeTermKey
     })
   }, [terminals, activeTermKey])
+
+  // Link a "new" dock tab to the conversation Claude actually created in it.
+  // A "Nouvelle" tab runs plain `claude`, which mints a fresh session whose id we
+  // don't know up front — so on its own that tab can never resume. Once the new
+  // conversation surfaces in a scan, adopt it (promote new → resume): record the
+  // sessionId and flip the target, so persistence stores the id and a later restore
+  // (e.g. the renderer reloading after the PC wakes from sleep) re-runs
+  // `claude --resume <id>` instead of a blank `claude` in the folder. Matching is
+  // conservative: same cwd, created AFTER the tab opened, never a session already
+  // owned by another tab. The `key` is unchanged, so the running pty is NOT
+  // re-created — we only update metadata.
+  useEffect(() => {
+    if (!scan) return
+    const cur = terminalsRef.current
+    const claimed = new Set(cur.map((term) => term.sessionId).filter(Boolean) as string[])
+    let changed = false
+    const next = cur.map((term) => {
+      if (term.sessionId || term.target.kind !== 'new' || !term.target.cwd) return term
+      const cwd = term.target.cwd
+      const since = (term.openedAt ?? 0) - 10_000 // small skew: born just after open counts
+      let best: SessionSummary | null = null
+      let bestBorn = -Infinity
+      for (const s of scan.sessions) {
+        if (s.cwd !== cwd || claimed.has(s.id)) continue
+        const born = s.createdAt ? Date.parse(s.createdAt) : NaN
+        if (!Number.isFinite(born) || born < since) continue
+        if (born > bestBorn) {
+          best = s
+          bestBorn = born
+        }
+      }
+      if (!best) return term
+      claimed.add(best.id)
+      changed = true
+      window.api.log('info', 'terminal', 'promote new→resume', { key: term.key, sessionId: best.id, cwd })
+      return { ...term, sessionId: best.id, title: best.displayTitle, target: { kind: 'resume' as const, session: best } }
+    })
+    if (changed) setTerminals(next)
+  }, [scan])
 
   // Re-apply the theme when the OS scheme changes and we're following the system.
   useEffect(() => {
@@ -230,7 +272,7 @@ export default function App(): JSX.Element {
       }
     }
     const key = `term-${++termCounter.current}`
-    setTerminals([...cur, { key, target, title, sessionId }])
+    setTerminals([...cur, { key, target, title, sessionId, openedAt: Date.now() }])
     setActiveTermKey(key)
     setDockCollapsed(false)
   }, [])
