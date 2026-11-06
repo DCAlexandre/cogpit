@@ -11,6 +11,7 @@ import { createTray, hasTray } from './lib/tray'
 
 let mainWindow: BrowserWindow | null = null
 let quitting = false
+let exitArmed = false
 
 const iconPath = join(__dirname, '../../resources/icon.png')
 
@@ -185,6 +186,19 @@ if (!gotLock) {
     quitting = true
     stopWatcher()
     killAllPty()
+    // Backstop so "Quit" always actually exits. On Windows the node-pty (ConPTY)
+    // read loop keeps native handles alive, so a plain app.quit() closes the
+    // window but leaves cogpit.exe running in the background. Force-exit if the
+    // graceful shutdown hasn't terminated the process shortly after. unref() so
+    // this timer itself never holds the process open: a clean exit happens first
+    // and the timer dies with it.
+    if (!exitArmed) {
+      exitArmed = true
+      setTimeout(() => {
+        logger.warn('app', 'force exit (graceful quit did not finish in time)')
+        app.exit(0)
+      }, 1200).unref()
+    }
   })
 
   // With a tray we deliberately keep running after all windows close.
