@@ -247,7 +247,8 @@ export async function readTranscript(filePath: string, maxMessages = 2000): Prom
           const b = block as Record<string, unknown>
           if (b.type === 'text' && typeof b.text === 'string') texts.push(b.text)
           else if (b.type === 'tool_use' && typeof b.name === 'string') tools.push(b.name)
-          else if (b.type === 'tool_result') texts.push('[tool result]')
+          // tool_result blocks are noise in a chat view — skip them (a turn that is
+          // only a tool result then has no text/tools and is dropped below).
         }
       }
       const text = texts.join('\n').trim()

@@ -1,5 +1,6 @@
-import { RefreshCw, Trash2, ChevronDown } from 'lucide-react'
-import type { AppInfo, DisplayFont, FontScale, LanguageSetting, Palette, Settings } from '@shared/types'
+import { useEffect, useState } from 'react'
+import { RefreshCw, Trash2, ChevronDown, Smartphone, RotateCcw } from 'lucide-react'
+import type { AppInfo, ClaudeInfo, DisplayFont, FontScale, LanguageSetting, MobileStatus, Palette, Settings } from '@shared/types'
 import { Modal } from './ui/modal'
 import { Button } from './ui/button'
 import { cn } from '@/lib/utils'
@@ -205,6 +206,8 @@ export function SettingsModal({
           {!ptyOk && <p className="mt-2 text-xs text-muted-foreground">{t('settings.ptyUnavailable')}</p>}
         </section>
 
+        <MobileAccessSection />
+
         <section>
           <h3 className="mb-2 font-display text-brass">{t('settings.actions')}</h3>
           <div className="flex gap-2">
@@ -236,6 +239,111 @@ export function SettingsModal({
         )}
       </div>
     </Modal>
+  )
+}
+
+function MobileAccessSection(): JSX.Element {
+  const t = useT()
+  const [status, setStatus] = useState<MobileStatus | null>(null)
+  const [busy, setBusy] = useState(false)
+  const [claude, setClaude] = useState<ClaudeInfo | null>(null)
+  const [claudeBusy, setClaudeBusy] = useState(false)
+
+  const refreshClaude = (): void => {
+    void window.api.mobile.claudeInfo().then(setClaude)
+  }
+  useEffect(refreshClaude, [])
+  const doClaude = async (fn: 'claudeInstall' | 'claudeUpdate'): Promise<void> => {
+    setClaudeBusy(true)
+    try {
+      await window.api.mobile[fn]()
+    } finally {
+      setClaudeBusy(false)
+      refreshClaude()
+    }
+  }
+
+  useEffect(() => {
+    let alive = true
+    const refresh = (): void => {
+      void window.api.mobile.status().then((s) => {
+        if (alive) setStatus(s)
+      })
+    }
+    refresh()
+    const id = window.setInterval(refresh, 2500)
+    return () => {
+      alive = false
+      window.clearInterval(id)
+    }
+  }, [])
+
+  const toggle = async (on: boolean): Promise<void> => {
+    setBusy(true)
+    try {
+      setStatus(on ? await window.api.mobile.enable() : await window.api.mobile.disable())
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const running = status?.running ?? false
+  return (
+    <section>
+      <h3 className="mb-2 flex items-center gap-1.5 font-display text-brass">
+        <Smartphone className="h-4 w-4" /> {t('mobile.title')}
+      </h3>
+      <p className="mb-2 text-xs text-muted-foreground">{t('mobile.desc')}</p>
+      <div className={cn(busy && 'pointer-events-none opacity-60')}>
+        <Toggle label={t('mobile.enable')} value={running} onChange={(v) => void toggle(v)} />
+      </div>
+      {running && status && (
+        <div className="mt-3 space-y-3 rounded-md border border-border bg-background/40 p-3">
+          {status.qrDataUrl && (
+            <img src={status.qrDataUrl} alt="pairing QR" className="mx-auto h-44 w-44 rounded-md bg-white p-2" />
+          )}
+          <p className="text-center text-xs text-muted-foreground">{t('mobile.scan')}</p>
+          {status.urls[0] && (
+            <div className="break-all rounded bg-background/60 px-2 py-1 text-center font-mono text-[11px] text-primary">
+              {status.urls[0]}
+            </div>
+          )}
+          <div className="flex items-center justify-between text-xs text-muted-foreground">
+            <span>{t('mobile.clients')}</span>
+            <span className="font-mono text-foreground">{status.clients}</span>
+          </div>
+          <div className="text-xs text-muted-foreground">
+            {status.interactive ? t('mobile.interactive') : t('mobile.readonly')}
+          </div>
+          <div className="flex items-center justify-between gap-2 border-t border-border/50 pt-2 text-xs">
+            <span className="text-muted-foreground">
+              {t('mobile.claude')}{' '}
+              <span className="font-mono text-foreground">
+                {claude ? (claude.found ? (claude.version ?? 'ok') : t('mobile.claudemissing')) : '…'}
+              </span>
+            </span>
+            {claude && (
+              <button
+                disabled={claudeBusy}
+                onClick={() => void doClaude(claude.found ? 'claudeUpdate' : 'claudeInstall')}
+                className="shrink-0 rounded border border-border px-2 py-1 text-[11px] text-muted-foreground hover:bg-muted disabled:opacity-50"
+              >
+                {claudeBusy ? t('mobile.claudeworking') : claude.found ? t('mobile.claudeupdate') : t('mobile.claudeinstall')}
+              </button>
+            )}
+          </div>
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-[11px] text-primary/70">{t('mobile.warn')}</p>
+            <button
+              onClick={() => void window.api.mobile.rotate().then(setStatus)}
+              className="flex shrink-0 items-center gap-1 rounded border border-border px-2 py-1 text-[11px] text-muted-foreground hover:bg-muted"
+            >
+              <RotateCcw className="h-3 w-3" /> {t('mobile.rotate')}
+            </button>
+          </div>
+        </div>
+      )}
+    </section>
   )
 }
 

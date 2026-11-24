@@ -91,6 +91,28 @@ export interface Settings {
   terminalMode: TerminalMode
   groupByProject: boolean
   confirmPermanentDelete: boolean
+  /** Mobile companion bridge: serve the phone app + encrypted WS on the LAN. */
+  mobileAccess: boolean
+  mobilePort: number
+}
+
+/** Status of the mobile companion bridge, surfaced in Settings. */
+export interface MobileStatus {
+  running: boolean
+  port: number | null
+  /** Pairing URLs (one per LAN address); the first backs the QR code. */
+  urls: string[]
+  /** data: URL of the pairing QR (points at urls[0]), or null. */
+  qrDataUrl: string | null
+  clients: number
+  interactive: boolean
+}
+
+/** The `claude` CLI as resolved on this machine (for interactive mobile use). */
+export interface ClaudeInfo {
+  found: boolean
+  path: string | null
+  version: string | null
 }
 
 export interface TrashEntry {
@@ -221,6 +243,18 @@ export interface CogpitApi {
     onMaximized(cb: (maximized: boolean) => void): () => void
   }
   onSessionsChanged(cb: () => void): () => void
+  /** Mobile companion bridge control (LAN-only, E2E encrypted). */
+  mobile: {
+    status(): Promise<MobileStatus>
+    enable(port?: number): Promise<MobileStatus>
+    disable(): Promise<MobileStatus>
+    rotate(): Promise<MobileStatus>
+    claudeInfo(): Promise<ClaudeInfo>
+    claudeInstall(): Promise<{ ok: boolean; output: string }>
+    claudeUpdate(): Promise<{ ok: boolean; output: string }>
+    /** Push the ids of sessions open in the dock, so the bridge won't drive them. */
+    setLiveSessions(ids: string[]): void
+  }
   /** Fire-and-forget debug log forwarded to the main-process log file (dev). */
   log(level: 'debug' | 'info' | 'warn' | 'error', scope: string, msg: string, data?: unknown): void
 }

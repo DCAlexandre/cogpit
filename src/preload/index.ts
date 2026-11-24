@@ -66,6 +66,16 @@ const api: CogpitApi = {
     onMaximized: (cb: (maximized: boolean) => void) => subscribe('window:maximized', cb)
   },
   onSessionsChanged: (cb: () => void) => subscribe('sessions:changed', cb),
+  mobile: {
+    status: () => ipcRenderer.invoke('mobile:status'),
+    enable: (port?: number) => ipcRenderer.invoke('mobile:enable', port),
+    disable: () => ipcRenderer.invoke('mobile:disable'),
+    rotate: () => ipcRenderer.invoke('mobile:rotate'),
+    claudeInfo: () => ipcRenderer.invoke('mobile:claudeInfo'),
+    claudeInstall: () => ipcRenderer.invoke('mobile:claudeInstall'),
+    claudeUpdate: () => ipcRenderer.invoke('mobile:claudeUpdate'),
+    setLiveSessions: (ids: string[]) => ipcRenderer.send('mobile:setLiveSessions', ids)
+  },
   log: (level, scope, msg, data) => ipcRenderer.send('log:renderer', level, scope, msg, data)
 }
 
