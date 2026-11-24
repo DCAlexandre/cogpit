@@ -29,6 +29,8 @@ export interface Settings {
   terminalMode: TerminalMode
   groupByProject: boolean
   confirmPermanentDelete: boolean
+  mobileAccess: boolean
+  mobilePort: number
 }
 
 /** A dock terminal persisted across restarts — enough to re-create it. */
@@ -65,7 +67,9 @@ const DEFAULT_SETTINGS: Settings = {
   // can't load on this platform.
   terminalMode: 'integrated',
   groupByProject: true,
-  confirmPermanentDelete: true
+  confirmPermanentDelete: true,
+  mobileAccess: false,
+  mobilePort: 8790
 }
 
 const DEFAULT_TERMINALS: TerminalState = { list: [], activeKey: null }

@@ -8,6 +8,8 @@ import { startWatcher, stopWatcher } from './lib/watcher'
 import { killAllPty, ptyStatus } from './lib/pty'
 import { initLogger, logger } from './lib/logger'
 import { createTray, hasTray } from './lib/tray'
+import { getSettings } from './lib/meta'
+import { enableMobile, disableMobile, mobileBroadcast } from './mobile'
 
 let mainWindow: BrowserWindow | null = null
 let quitting = false
@@ -150,6 +152,8 @@ function notifySessionsChanged(): void {
     logger.debug('watcher', 'sessions changed → notify renderer')
     mainWindow.webContents.send('sessions:changed')
   }
+  // Also nudge any connected phones to refresh their list.
+  mobileBroadcast({ t: 'sessions-changed' })
 }
 
 const gotLock = app.requestSingleInstanceLock()
@@ -176,6 +180,13 @@ if (!gotLock) {
     startWatcher(claudeCodeAdapter.rootDir(), notifySessionsChanged)
     logger.info('watcher', 'started', { root: claudeCodeAdapter.rootDir() })
 
+    // Auto-start the mobile bridge if the user left it enabled.
+    void getSettings().then((s) => {
+      if (s.mobileAccess) {
+        enableMobile(s.mobilePort).catch((e) => logger.error('mobile', 'autostart failed', String(e)))
+      }
+    })
+
     app.on('activate', () => {
       if (BrowserWindow.getAllWindows().length === 0) createWindow()
       else showWindow()
@@ -186,12 +197,13 @@ if (!gotLock) {
     quitting = true
     stopWatcher()
     killAllPty()
+    void disableMobile()
     // Backstop so "Quit" always actually exits. On Windows the node-pty (ConPTY)
-    // read loop keeps native handles alive, so a plain app.quit() closes the
-    // window but leaves cogpit.exe running in the background. Force-exit if the
-    // graceful shutdown hasn't terminated the process shortly after. unref() so
-    // this timer itself never holds the process open: a clean exit happens first
-    // and the timer dies with it.
+    // read loop — and, when enabled, the mobile LAN server's sockets — keep native
+    // handles alive, so a plain app.quit() closes the window but leaves cogpit.exe
+    // running in the background. Force-exit if the graceful shutdown hasn't
+    // terminated the process shortly after. unref() so this timer itself never
+    // holds the process open: a clean exit happens first and the timer dies with it.
     if (!exitArmed) {
       exitArmed = true
       setTimeout(() => {

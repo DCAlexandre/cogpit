@@ -27,3 +27,6 @@ Thumbs.db
 # no Claude session data or exported transcripts belong in the repo
 *.jsonl
 .cogpit-local/
+
+# throwaway mobile-companion proof-of-concept (not part of the shipped app)
+poc/

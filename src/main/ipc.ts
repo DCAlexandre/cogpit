@@ -18,6 +18,9 @@ import { refreshTrayMenu } from './lib/tray'
 import { openExternalTerminal } from './lib/terminal'
 import { createPty, writePty, resizePty, killPty, killAllPty, ptyStatus } from './lib/pty'
 import { detectIde, openInIde } from './lib/ide'
+import { enableMobile, disableMobile, mobileStatus, rotateMobileIdentity } from './mobile'
+import { resolveClaude, installClaude, updateClaude } from './mobile/claudeBin'
+import { setLiveDockSessions } from './mobile/dockState'
 import { logger } from './lib/logger'
 
 /** Single adapter today; swap/extend here when another CLI is supported. */
@@ -130,6 +133,23 @@ export function registerIpc(): void {
     void refreshTrayMenu() // tray labels follow the language setting
     return next
   })
+
+  handle('mobile:status', () => mobileStatus())
+  handle('mobile:enable', async (_e, port?: number) => {
+    const p = port ?? (await getSettings()).mobilePort
+    await setSettings({ mobileAccess: true, mobilePort: p })
+    return enableMobile(p)
+  })
+  handle('mobile:disable', async () => {
+    await setSettings({ mobileAccess: false })
+    await disableMobile()
+    return mobileStatus()
+  })
+  handle('mobile:rotate', () => rotateMobileIdentity())
+  handle('mobile:claudeInfo', () => resolveClaude())
+  handle('mobile:claudeInstall', () => installClaude())
+  handle('mobile:claudeUpdate', () => updateClaude())
+  ipcMain.on('mobile:setLiveSessions', (_e, ids: string[]) => setLiveDockSessions(Array.isArray(ids) ? ids : []))
 
   handle('terminal:spec', (_e, target: TerminalTarget) => specFor(target))
   handle('terminal:external', (_e, target: TerminalTarget) => openExternalTerminal(specFor(target)))

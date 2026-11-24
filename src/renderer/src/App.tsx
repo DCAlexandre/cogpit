@@ -338,6 +338,12 @@ export default function App(): JSX.Element {
     [terminals]
   )
 
+  // Tell the mobile bridge which sessions are open in the dock, so it refuses to
+  // drive them from a phone (single-writer per session).
+  useEffect(() => {
+    window.api.mobile.setLiveSessions([...liveIds])
+  }, [liveIds])
+
   const trashOne = useCallback(
     async (s: SessionSummary) => {
       window.api.log('info', 'trash', s.id, { project: s.projectName })

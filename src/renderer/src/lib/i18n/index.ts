@@ -6,6 +6,7 @@ import settings from './dict/settings'
 import panel from './dict/panel'
 import modals from './dict/modals'
 import terminal from './dict/terminal'
+import mobile from './dict/mobile'
 
 export type Locale = 'fr' | 'en'
 /** User setting: an explicit language, or follow the device. */
@@ -17,7 +18,7 @@ export interface Fragment {
   en: Record<string, string>
 }
 
-const FRAGMENTS: Fragment[] = [app, nav, list, settings, panel, modals, terminal]
+const FRAGMENTS: Fragment[] = [app, nav, list, settings, panel, modals, terminal, mobile]
 const DICT: Record<Locale, Record<string, string>> = {
   fr: Object.assign({}, ...FRAGMENTS.map((f) => f.fr)),
   en: Object.assign({}, ...FRAGMENTS.map((f) => f.en))
