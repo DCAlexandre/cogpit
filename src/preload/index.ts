@@ -74,7 +74,10 @@ const api: CogpitApi = {
     claudeInfo: () => ipcRenderer.invoke('mobile:claudeInfo'),
     claudeInstall: () => ipcRenderer.invoke('mobile:claudeInstall'),
     claudeUpdate: () => ipcRenderer.invoke('mobile:claudeUpdate'),
-    setLiveSessions: (ids: string[]) => ipcRenderer.send('mobile:setLiveSessions', ids)
+    setLiveSessions: (ids: string[]) => ipcRenderer.send('mobile:setLiveSessions', ids),
+    reclaim: (sessionId: string) => ipcRenderer.send('mobile:reclaim', sessionId),
+    onControl: (cb: (e: { sessionId: string; controlledBy: 'mobile' | 'desktop'; device?: string }) => void) =>
+      subscribe('mobile:control', cb)
   },
   log: (level, scope, msg, data) => ipcRenderer.send('log:renderer', level, scope, msg, data)
 }

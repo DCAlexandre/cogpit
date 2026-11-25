@@ -13,6 +13,7 @@
 import type { InteractionEngine, Conn } from './server'
 import { resolveClaude } from './claudeBin'
 import { isDockLive } from './dockState'
+import { controllerConnId, mobileTakeControl, releaseByConn } from './control'
 import { logger } from '../lib/logger'
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -56,11 +57,26 @@ export async function createInteraction(): Promise<InteractionEngine | null> {
     return s
   }
 
-  async function run(conn: Conn, args: { sessionId: string; cwd: string | null; text: string }): Promise<void> {
-    // Single-writer guards.
+  async function run(conn: Conn, args: { file: string; sessionId: string; cwd: string | null; text: string }): Promise<void> {
+    // A desktop dock tab is open for this session → TAKE IT OVER (pause the PC
+    // tab) instead of refusing, unless another phone already controls it. The
+    // desktop reloads with `claude --resume` when it reclaims, picking up what we
+    // add here. Taking over is idempotent across our own successive messages.
     if (isDockLive(args.sessionId)) {
-      conn.send({ t: 'event', event: { kind: 'error', text: 'Session ouverte en terminal sur le PC — pilotage mobile refusé.' } })
-      return
+      const owner = controllerConnId(args.sessionId)
+      if (owner !== undefined && owner !== conn.id) {
+        conn.send({ t: 'event', event: { kind: 'error', text: 'Session déjà pilotée depuis un autre appareil.' } })
+        return
+      }
+      if (owner === undefined) {
+        mobileTakeControl(args.sessionId, {
+          connId: conn.id,
+          device: conn.label,
+          abort: () => stateFor(conn).ac?.abort(),
+          notifyPhone: () => conn.send({ t: 'control', file: args.file, controlledBy: 'desktop' })
+        })
+        conn.send({ t: 'control', file: args.file, controlledBy: 'mobile' })
+      }
     }
     const holder = driving.get(args.sessionId)
     if (holder !== undefined && holder !== conn.id) {
@@ -119,7 +135,7 @@ export async function createInteraction(): Promise<InteractionEngine | null> {
 
   return {
     send(a) {
-      void run(a.conn, { sessionId: a.sessionId, cwd: a.cwd, text: a.text })
+      void run(a.conn, { file: a.file, sessionId: a.sessionId, cwd: a.cwd, text: a.text })
     },
     permission(conn, id, allow) {
       stateFor(conn).perms.get(id)?.(allow)
@@ -144,6 +160,8 @@ export async function createInteraction(): Promise<InteractionEngine | null> {
       }
       // release any sessions this connection was driving
       for (const [sid, owner] of driving) if (owner === conn.id) driving.delete(sid)
+      // auto-reclaim: a paused desktop tab this phone controlled reloads itself
+      releaseByConn(conn.id)
     }
   }
 }

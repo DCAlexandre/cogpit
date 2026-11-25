@@ -57,6 +57,10 @@ export default function App(): JSX.Element {
   const [terminals, setTerminals] = useState<OpenTerminal[]>([])
   const [activeTermKey, setActiveTermKey] = useState<string | null>(null)
   const [dockCollapsed, setDockCollapsed] = useState(false)
+  // Sessions a phone has taken over: sessionId -> phone label. Their dock tab is
+  // paused (pty killed, overlay shown); clearing one remounts the TerminalView,
+  // which re-runs `claude --resume` and reloads the conversation.
+  const [mobileControlled, setMobileControlled] = useState<Map<string, string>>(new Map())
   const terminalsRef = useRef<OpenTerminal[]>([])
   terminalsRef.current = terminals
   const termCounter = useRef(0)
@@ -338,11 +342,38 @@ export default function App(): JSX.Element {
     [terminals]
   )
 
-  // Tell the mobile bridge which sessions are open in the dock, so it refuses to
-  // drive them from a phone (single-writer per session).
+  // Tell the mobile bridge which sessions are open in the dock, so it can hand
+  // control back and forth (single-writer per session).
   useEffect(() => {
     window.api.mobile.setLiveSessions([...liveIds])
   }, [liveIds])
+
+  // A phone took a session over (pause its tab) or the desktop reclaimed it
+  // (clear → the TerminalView remounts and re-runs `claude --resume`).
+  useEffect(
+    () =>
+      window.api.mobile.onControl((e) => {
+        setMobileControlled((cur) => {
+          const next = new Map(cur)
+          if (e.controlledBy === 'mobile') next.set(e.sessionId, e.device ?? 'mobile')
+          else next.delete(e.sessionId)
+          return next
+        })
+      }),
+    []
+  )
+
+  // Desktop "Reprendre": tell the bridge to release the phone, then clear locally
+  // so the tab reloads immediately.
+  const reclaimSession = useCallback((sessionId: string) => {
+    window.api.mobile.reclaim(sessionId)
+    setMobileControlled((cur) => {
+      if (!cur.has(sessionId)) return cur
+      const next = new Map(cur)
+      next.delete(sessionId)
+      return next
+    })
+  }, [])
 
   const trashOne = useCallback(
     async (s: SessionSummary) => {
@@ -629,6 +660,8 @@ export default function App(): JSX.Element {
           onClose={closeTerminal}
           onReorder={reorderTerminals}
           onToggleCollapse={() => setDockCollapsed((c) => !c)}
+          mobileControlled={mobileControlled}
+          onReclaim={reclaimSession}
         />
       )}
 

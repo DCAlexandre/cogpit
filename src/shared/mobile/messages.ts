@@ -43,3 +43,7 @@ export type ServerMsg =
   | { t: 'event'; event: AgentEvent }
   | { t: 'permission'; id: string; tool: string; input: unknown }
   | { t: 'busy'; busy: boolean }
+  // control handoff: 'mobile' = this phone took the session over (desktop tab
+  // paused); 'desktop' = the PC reclaimed it (phone goes read-only until it
+  // sends again, which takes control back).
+  | { t: 'control'; file: string; controlledBy: 'mobile' | 'desktop' }

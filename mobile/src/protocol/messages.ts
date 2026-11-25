@@ -34,3 +34,4 @@ export type ServerMsg =
   | { t: 'event'; event: AgentEvent }
   | { t: 'permission'; id: string; tool: string; input: unknown }
   | { t: 'busy'; busy: boolean }
+  | { t: 'control'; file: string; controlledBy: 'mobile' | 'desktop' }

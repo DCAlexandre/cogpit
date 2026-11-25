@@ -123,6 +123,9 @@ export function App(): JSX.Element {
   const [messages, setMessages] = useState<TranscriptMessage[]>([])
   const [busy, setBusy] = useState(false)
   const [perm, setPerm] = useState<PermReq | null>(null)
+  // Who drives the open session: 'mobile' = us (PC paused), 'desktop' = the PC
+  // reclaimed it (our next message takes control back), null = unknown/not contended.
+  const [control, setControl] = useState<'mobile' | 'desktop' | null>(null)
   const [attempt, setAttempt] = useState(0)
 
   const connRef = useRef<Connection | null>(null)
@@ -181,6 +184,9 @@ export function App(): JSX.Element {
         case 'busy':
           setBusy(msg.busy)
           break
+        case 'control':
+          if (msg.file === selectedRef.current?.filePath) setControl(msg.controlledBy)
+          break
         case 'permission':
           setPerm({ id: msg.id, tool: msg.tool, input: msg.input })
           break
@@ -200,6 +206,7 @@ export function App(): JSX.Element {
     setMessages([])
     setBusy(false)
     setPerm(null)
+    setControl(null)
     pendingUserRef.current = []
     connRef.current?.send({ t: 'subscribe', file: s.filePath })
   }
@@ -207,6 +214,7 @@ export function App(): JSX.Element {
     connRef.current?.send({ t: 'unsubscribe' })
     setSelected(null)
     setMessages([])
+    setControl(null)
     pendingUserRef.current = []
   }
   const sendText = (text: string): void => {
@@ -352,6 +360,7 @@ export function App(): JSX.Element {
           interactive={interactive}
           busy={busy}
           perm={perm}
+          control={control}
           onSend={sendText}
           onPerm={answerPerm}
         />
@@ -744,6 +753,7 @@ function Chat({
   interactive,
   busy,
   perm,
+  control,
   onSend,
   onPerm
 }: {
@@ -752,6 +762,7 @@ function Chat({
   interactive: boolean
   busy: boolean
   perm: PermReq | null
+  control: 'mobile' | 'desktop' | null
   onSend: (text: string) => void
   onPerm: (allow: boolean) => void
 }): JSX.Element {
@@ -800,6 +811,23 @@ function Chat({
         )}
         <div ref={endRef} />
       </div>
+
+      {control === 'desktop' && (
+        <div
+          className="border-t px-3 py-1.5 text-center text-[11px]"
+          style={{ borderColor: 'hsl(var(--primary) / 0.4)', background: 'hsl(var(--primary) / 0.1)', color: 'hsl(var(--primary))' }}
+        >
+          {t('control.onPC')}
+        </div>
+      )}
+      {control === 'mobile' && (
+        <div
+          className="border-t px-3 py-1 text-center text-[10px]"
+          style={{ borderColor: 'hsl(var(--border) / 0.5)', color: 'hsl(var(--muted))' }}
+        >
+          {t('control.onMobile')}
+        </div>
+      )}
 
       {interactive ? (
         <div className="flex items-end gap-2 border-t p-2" style={{ borderColor: 'hsl(var(--border) / 0.5)', background: 'hsl(var(--panel))', paddingBottom: 'max(8px, env(safe-area-inset-bottom))' }}>

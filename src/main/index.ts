@@ -10,6 +10,7 @@ import { initLogger, logger } from './lib/logger'
 import { createTray, hasTray } from './lib/tray'
 import { getSettings } from './lib/meta'
 import { enableMobile, disableMobile, mobileBroadcast } from './mobile'
+import { setControlNotifier } from './mobile/control'
 
 let mainWindow: BrowserWindow | null = null
 let quitting = false
@@ -170,6 +171,11 @@ if (!gotLock) {
     logger.info('app', 'ready', { pty: ptyStatus(), claudeRoot: claudeCodeAdapter.rootDir() })
     registerIpc()
     createWindow()
+    // Push session control handoffs (phone takes over / desktop reclaims) to the
+    // renderer so it can pause or reload the matching dock tab.
+    setControlNotifier((e) => {
+      if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send('mobile:control', e)
+    })
     void createTray(appIcon(), {
       onOpen: showWindow,
       onQuit: () => {

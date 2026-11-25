@@ -47,6 +47,8 @@ export interface BridgeHandle {
 
 export interface Conn {
   id: number
+  /** human label for this phone (remote IP), shown on a paused desktop tab */
+  label: string
   ws: WebSocket
   channel: SecureChannel | null
   watchedFile: string | null
@@ -127,7 +129,8 @@ export function startBridge(opts: BridgeOptions): BridgeHandle {
       /* default */
     }
     if (pathname === '/ws') {
-      wss.handleUpgrade(req, socket, head, (ws) => onConnection(ws))
+      const ip = (req.socket.remoteAddress || '').replace(/^::ffff:/, '') || 'LAN'
+      wss.handleUpgrade(req, socket, head, (ws) => onConnection(ws, ip))
     } else {
       socket.destroy()
     }
@@ -212,9 +215,10 @@ export function startBridge(opts: BridgeOptions): BridgeHandle {
     }
   }
 
-  function onConnection(ws: WebSocket): void {
+  function onConnection(ws: WebSocket, ip: string): void {
     const conn: Conn = {
       id: ++counter,
+      label: `mobile ${ip}`,
       ws,
       channel: null,
       watchedFile: null,
