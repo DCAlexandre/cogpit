@@ -193,24 +193,37 @@ if (!gotLock) {
     })
   })
 
-  app.on('before-quit', () => {
+  app.on('before-quit', (e) => {
     quitting = true
+    if (exitArmed) return
+    exitArmed = true
+    // Make "Quit" always actually terminate cogpit.exe. On Windows the node-pty
+    // (ConPTY) worker thread — and, when enabled, the mobile LAN server's sockets
+    // — keep the process alive after the window closes, so a plain quit leaves it
+    // running in the background.
+    //
+    // The catch: the moment a normal quit begins, Electron STOPS servicing the
+    // libuv loop, so a force-exit timer armed here never fires (verified: the old
+    // "force exit" log line never appeared). So instead we CANCEL this quit with
+    // preventDefault() — which keeps the loop running normally — hide the windows
+    // so it still feels instant, run cleanup, then terminate the process ourselves
+    // with a hard process.exit() (ExitProcess tears down every thread, ConPTY
+    // worker included). The short delay lets the async cleanup / pending writes go.
+    e.preventDefault()
+    for (const w of BrowserWindow.getAllWindows()) {
+      try {
+        w.hide()
+      } catch {
+        /* already destroyed */
+      }
+    }
     stopWatcher()
     killAllPty()
     void disableMobile()
-    // Backstop so "Quit" always actually exits. On Windows the node-pty (ConPTY)
-    // read loop — and, when enabled, the mobile LAN server's sockets — keep native
-    // handles alive, so a plain app.quit() closes the window but leaves cogpit.exe
-    // running in the background. Force-exit if the graceful shutdown hasn't
-    // terminated the process shortly after. unref() so this timer itself never
-    // holds the process open: a clean exit happens first and the timer dies with it.
-    if (!exitArmed) {
-      exitArmed = true
-      setTimeout(() => {
-        logger.warn('app', 'force exit (graceful quit did not finish in time)')
-        app.exit(0)
-      }, 1200).unref()
-    }
+    setTimeout(() => {
+      logger.warn('app', 'force exit on quit')
+      process.exit(0)
+    }, 300)
   })
 
   // With a tray we deliberately keep running after all windows close.
