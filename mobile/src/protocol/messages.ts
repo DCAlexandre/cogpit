@@ -8,12 +8,19 @@ export interface ScanPayload {
   generatedAt: string
 }
 
+export interface Attachment {
+  name: string
+  mime: string
+  /** base64-encoded file bytes (no `data:` prefix). */
+  dataB64: string
+}
+
 export type ClientMsg =
   | { t: 'scan' }
   | { t: 'transcript'; file: string }
   | { t: 'subscribe'; file: string }
   | { t: 'unsubscribe' }
-  | { t: 'send'; file: string; sessionId: string; cwd: string | null; text: string }
+  | { t: 'send'; file: string; sessionId: string; cwd: string | null; text: string; attachments?: Attachment[] }
   | { t: 'permission'; id: string; allow: boolean }
   | { t: 'interrupt' }
 

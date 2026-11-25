@@ -11,7 +11,7 @@ import { readFile } from 'fs/promises'
 import { watchFile, unwatchFile } from 'fs'
 import { join, normalize, resolve, extname } from 'path'
 import { responder, type SecureChannel } from '../../shared/mobile/crypto'
-import type { ClientMsg, ServerMsg } from '../../shared/mobile/messages'
+import type { Attachment, ClientMsg, ServerMsg } from '../../shared/mobile/messages'
 import { scanAll, readTranscript } from '../lib/sessions'
 import { claudeCodeAdapter } from '../adapters/claudeCode'
 import { logger } from '../lib/logger'
@@ -23,6 +23,7 @@ export interface InteractionEngine {
     sessionId: string
     cwd: string | null
     text: string
+    attachments?: Attachment[]
   }): void
   permission(conn: Conn, id: string, allow: boolean): void
   interrupt(conn: Conn): void
@@ -201,7 +202,14 @@ export function startBridge(opts: BridgeOptions): BridgeHandle {
         return
       case 'send':
         if (opts.interaction) {
-          opts.interaction.send({ conn, file: msg.file, sessionId: msg.sessionId, cwd: msg.cwd, text: msg.text })
+          opts.interaction.send({
+            conn,
+            file: msg.file,
+            sessionId: msg.sessionId,
+            cwd: msg.cwd,
+            text: msg.text,
+            attachments: msg.attachments
+          })
         } else {
           conn.send({ t: 'error', message: 'interaction-unavailable' })
         }

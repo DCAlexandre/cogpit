@@ -1,8 +1,8 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ChangeEvent, type ReactNode } from 'react'
 import { connect, type Connection, type ConnState } from './lib/connection'
 import { targetFromUrl, type Target } from './lib/target'
 import { isNative, scanQr } from './lib/qr'
-import type { ScanPayload } from './protocol/messages'
+import type { Attachment, ScanPayload } from './protocol/messages'
 import type { SessionSummary, TranscriptMessage } from './protocol/types'
 import { t, relTime } from './lib/i18n'
 import { Markdown } from './lib/markdown'
@@ -38,6 +38,23 @@ function cleanText(text: string): string {
     .split('\n')
     .filter((l) => !TOOL_RESULT_RE.test(l))
     .join('\n')
+}
+
+// Keep attachments LAN-friendly; the bridge enforces the same cap defensively.
+const MAX_ATTACHMENT_BYTES = 20 * 1024 * 1024
+
+/** Read a picked File as base64 (strips the `data:<mime>;base64,` prefix). */
+function readAsBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const r = new FileReader()
+    r.onerror = () => reject(new Error('read-failed'))
+    r.onload = () => {
+      const res = String(r.result ?? '')
+      const comma = res.indexOf(',')
+      resolve(comma >= 0 ? res.slice(comma + 1) : res)
+    }
+    r.readAsDataURL(file)
+  })
 }
 
 function hostOf(wsUrl: string): string {
@@ -217,9 +234,15 @@ export function App(): JSX.Element {
     setControl(null)
     pendingUserRef.current = []
   }
-  const sendText = (text: string): void => {
+  const sendText = (text: string, attachments?: Attachment[]): void => {
     const s = selectedRef.current
     if (!s) return
+    if (attachments && attachments.length > 0) {
+      // No optimistic bubble: the composed user turn (caption + file paths) comes
+      // back on the live tail.
+      connRef.current?.send({ t: 'send', file: s.filePath, sessionId: s.id, cwd: s.cwd, text, attachments })
+      return
+    }
     pendingUserRef.current.push(text.trim())
     setMessages((m) => [...m, { role: 'user', text, timestamp: null, tools: [] }])
     connRef.current?.send({ t: 'send', file: s.filePath, sessionId: s.id, cwd: s.cwd, text })
@@ -715,6 +738,24 @@ function PinIcon(): JSX.Element {
   )
 }
 
+function PaperclipIcon(): JSX.Element {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      width="18"
+      height="18"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48" />
+    </svg>
+  )
+}
+
 function StarIcon(): JSX.Element {
   return (
     <svg
@@ -763,21 +804,65 @@ function Chat({
   busy: boolean
   perm: PermReq | null
   control: 'mobile' | 'desktop' | null
-  onSend: (text: string) => void
+  onSend: (text: string, attachments?: Attachment[]) => void
   onPerm: (allow: boolean) => void
 }): JSX.Element {
   void session
   const [draft, setDraft] = useState('')
+  const [attachments, setAttachments] = useState<Attachment[]>([])
+  const [attachErr, setAttachErr] = useState('')
+  const [sending, setSending] = useState(false)
+  const fileRef = useRef<HTMLInputElement | null>(null)
   const endRef = useRef<HTMLDivElement | null>(null)
   useEffect(() => {
     endRef.current?.scrollIntoView({ block: 'end' })
   }, [messages.length, busy, perm])
 
+  // Clear the "sending" hint as soon as the PC starts responding or a turn lands.
+  useEffect(() => {
+    setSending(false)
+  }, [busy, messages.length])
+  useEffect(() => {
+    if (!sending) return
+    const id = window.setTimeout(() => setSending(false), 12000)
+    return () => window.clearTimeout(id)
+  }, [sending])
+
+  const pickFiles = (): void => {
+    setAttachErr('')
+    fileRef.current?.click()
+  }
+  const onFiles = async (e: ChangeEvent<HTMLInputElement>): Promise<void> => {
+    const files = Array.from(e.target.files ?? [])
+    e.target.value = '' // let the same file be re-picked later
+    const added: Attachment[] = []
+    for (const f of files) {
+      if (f.size > MAX_ATTACHMENT_BYTES) {
+        setAttachErr(t('attach.toobig'))
+        continue
+      }
+      try {
+        added.push({ name: f.name, mime: f.type || 'application/octet-stream', dataB64: await readAsBase64(f) })
+      } catch {
+        setAttachErr(t('attach.readfail'))
+      }
+    }
+    if (added.length) setAttachments((cur) => [...cur, ...added])
+  }
+  const removeAttachment = (i: number): void => setAttachments((cur) => cur.filter((_, j) => j !== i))
+
   const submit = (): void => {
     const text = draft.trim()
-    if (!text) return
-    onSend(text)
+    if (!text && attachments.length === 0) return
+    if (attachments.length > 0) {
+      onSend(text, attachments)
+      setSending(true)
+    } else {
+      onSend(text)
+    }
     setDraft('')
+    setAttachments([])
+    setAttachErr('')
   }
 
   return (
@@ -830,24 +915,57 @@ function Chat({
       )}
 
       {interactive ? (
-        <div className="flex items-end gap-2 border-t p-2" style={{ borderColor: 'hsl(var(--border) / 0.5)', background: 'hsl(var(--panel))', paddingBottom: 'max(8px, env(safe-area-inset-bottom))' }}>
-          <textarea
-            value={draft}
-            onChange={(e) => setDraft(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault()
-                submit()
-              }
-            }}
-            rows={1}
-            placeholder={t('chat.placeholder')}
-            className="max-h-28 min-h-[40px] flex-1 resize-none rounded-2xl border bg-transparent px-3 py-2 text-sm"
-            style={{ borderColor: 'hsl(var(--border))', color: 'hsl(var(--fg))' }}
-          />
-          <button onClick={submit} className="rounded-full px-4 py-2 text-sm font-medium" style={{ background: 'hsl(var(--primary))', color: 'hsl(34 45% 8%)' }}>
-            {t('chat.send')}
-          </button>
+        <div
+          className="border-t"
+          style={{ borderColor: 'hsl(var(--border) / 0.5)', background: 'hsl(var(--panel))', paddingBottom: 'max(8px, env(safe-area-inset-bottom))' }}
+        >
+          {attachments.length > 0 && (
+            <div className="flex flex-wrap gap-1.5 px-2 pt-2">
+              {attachments.map((a, i) => (
+                <span key={i} className="chip" style={{ gap: 5 }}>
+                  <span>{a.mime.startsWith('image/') ? '🖼' : '📄'}</span>
+                  <span className="max-w-[120px] truncate">{a.name}</span>
+                  <button onClick={() => removeAttachment(i)} aria-label={t('attach.remove')} style={{ marginLeft: 2, opacity: 0.8 }}>
+                    ✕
+                  </button>
+                </span>
+              ))}
+            </div>
+          )}
+          {(sending || attachErr) && (
+            <div className="px-3 pt-1.5 text-[11px]" style={{ color: attachErr ? 'hsl(var(--primary))' : 'hsl(var(--muted))' }}>
+              {attachErr || t('attach.sending')}
+            </div>
+          )}
+          <div className="flex items-end gap-2 p-2">
+            <input ref={fileRef} type="file" multiple className="hidden" onChange={(e) => void onFiles(e)} />
+            <button
+              onClick={pickFiles}
+              aria-label={t('attach.add')}
+              title={t('attach.add')}
+              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border active:opacity-60"
+              style={{ borderColor: 'hsl(var(--border))', color: 'hsl(var(--primary))' }}
+            >
+              <PaperclipIcon />
+            </button>
+            <textarea
+              value={draft}
+              onChange={(e) => setDraft(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault()
+                  submit()
+                }
+              }}
+              rows={1}
+              placeholder={t('chat.placeholder')}
+              className="max-h-28 min-h-[40px] flex-1 resize-none rounded-2xl border bg-transparent px-3 py-2 text-sm"
+              style={{ borderColor: 'hsl(var(--border))', color: 'hsl(var(--fg))' }}
+            />
+            <button onClick={submit} className="rounded-full px-4 py-2 text-sm font-medium" style={{ background: 'hsl(var(--primary))', color: 'hsl(34 45% 8%)' }}>
+              {t('chat.send')}
+            </button>
+          </div>
         </div>
       ) : (
         <div className="border-t p-2 text-center text-[11px]" style={{ borderColor: 'hsl(var(--border) / 0.5)', color: 'hsl(var(--muted))' }}>

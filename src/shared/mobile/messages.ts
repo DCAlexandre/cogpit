@@ -12,14 +12,24 @@ export interface ScanPayload {
   generatedAt: string
 }
 
+/** A file attached from the phone (image, screenshot, document…). */
+export interface Attachment {
+  name: string
+  /** MIME type as reported by the phone, e.g. "image/png" (best-effort). */
+  mime: string
+  /** base64-encoded file bytes (no `data:` prefix). */
+  dataB64: string
+}
+
 /** Phone -> PC. */
 export type ClientMsg =
   | { t: 'scan' }
   | { t: 'transcript'; file: string }
   | { t: 'subscribe'; file: string }
   | { t: 'unsubscribe' }
-  // interaction (best-effort, Agent SDK)
-  | { t: 'send'; file: string; sessionId: string; cwd: string | null; text: string }
+  // interaction (best-effort, Agent SDK). `attachments` are written to a temp
+  // folder on the PC and their paths handed to Claude (which reads images/files).
+  | { t: 'send'; file: string; sessionId: string; cwd: string | null; text: string; attachments?: Attachment[] }
   | { t: 'permission'; id: string; allow: boolean }
   | { t: 'interrupt' }
 
