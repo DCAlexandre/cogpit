@@ -17,25 +17,28 @@ export interface ClaudeInfo {
 
 function candidates(): string[] {
   const home = homedir()
-  const list = [join(home, '.claude', 'local', isWin ? 'claude.exe' : 'claude'), join(home, '.local', 'bin', 'claude')]
   if (isWin) {
-    if (process.env.APPDATA) list.push(join(process.env.APPDATA, 'npm', 'claude.cmd'))
+    const list = [join(home, '.claude', 'local', 'claude.exe'), join(home, '.local', 'bin', 'claude.exe')]
     if (process.env.LOCALAPPDATA) list.push(join(process.env.LOCALAPPDATA, 'Programs', 'claude', 'claude.exe'))
-  } else {
-    list.push('/usr/local/bin/claude', '/opt/homebrew/bin/claude')
+    if (process.env.APPDATA) list.push(join(process.env.APPDATA, 'npm', 'claude.cmd'))
+    return list
   }
-  return list
+  return [join(home, '.claude', 'local', 'claude'), join(home, '.local', 'bin', 'claude'), '/usr/local/bin/claude', '/opt/homebrew/bin/claude']
 }
 
 async function whichClaude(): Promise<string | null> {
   try {
     const { stdout } = await pexec(isWin ? 'where' : 'which', ['claude'], { timeout: 10000, windowsHide: true })
-    return (
-      stdout
-        .split(/\r?\n/)
-        .map((s) => s.trim())
-        .find(Boolean) || null
-    )
+    const lines = stdout
+      .split(/\r?\n/)
+      .map((s) => s.trim())
+      .filter(Boolean)
+    if (!isWin) return lines[0] || null
+    // `where claude` lists the extensionless npm *shell* shim first, which the
+    // Agent SDK cannot spawn on Windows (it mis-detects it as a native binary and
+    // fails to launch). Prefer a real launchable executable: .exe, then .cmd/.bat.
+    const byExt = (re: RegExp): string | undefined => lines.find((l) => re.test(l))
+    return byExt(/\.exe$/i) || byExt(/\.(cmd|bat)$/i) || lines[0] || null
   } catch {
     return null
   }
