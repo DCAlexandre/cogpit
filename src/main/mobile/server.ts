@@ -14,6 +14,7 @@ import { responder, type SecureChannel } from '../../shared/mobile/crypto'
 import type { Attachment, ClientMsg, ServerMsg } from '../../shared/mobile/messages'
 import { scanAll, readTranscript } from '../lib/sessions'
 import { claudeCodeAdapter } from '../adapters/claudeCode'
+import { liveDockSessions } from './dockState'
 import { logger } from '../lib/logger'
 
 export interface InteractionEngine {
@@ -259,6 +260,7 @@ export function startBridge(opts: BridgeOptions): BridgeHandle {
           conn.channel = channel
           ws.send(Buffer.from(fPub))
           conn.send({ t: 'hello', host: opts.hostName, adapter: claudeCodeAdapter.label, interactive: !!opts.interaction })
+          conn.send({ t: 'live', sessionIds: liveDockSessions() })
         } catch (e) {
           logger.warn('mobile', 'handshake failed', { id: conn.id, err: String(e) })
           ws.close()

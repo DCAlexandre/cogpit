@@ -57,3 +57,7 @@ export type ServerMsg =
   // paused); 'desktop' = the PC reclaimed it (phone goes read-only until it
   // sends again, which takes control back).
   | { t: 'control'; file: string; controlledBy: 'mobile' | 'desktop' }
+  // ids of sessions currently open in the desktop dock, so the phone can list
+  // them first ("running on the PC") for quick takeover. Pushed on connect and
+  // whenever the dock changes.
+  | { t: 'live'; sessionIds: string[] }

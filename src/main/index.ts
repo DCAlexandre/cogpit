@@ -11,6 +11,7 @@ import { createTray, hasTray } from './lib/tray'
 import { getSettings } from './lib/meta'
 import { enableMobile, disableMobile, mobileBroadcast } from './mobile'
 import { setControlNotifier } from './mobile/control'
+import { setLiveDockNotifier } from './mobile/dockState'
 
 let mainWindow: BrowserWindow | null = null
 let quitting = false
@@ -176,6 +177,9 @@ if (!gotLock) {
     setControlNotifier((e) => {
       if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send('mobile:control', e)
     })
+    // Broadcast dock changes to connected phones so they can list "running on PC"
+    // sessions first for quick takeover.
+    setLiveDockNotifier((ids) => mobileBroadcast({ t: 'live', sessionIds: ids }))
     void createTray(appIcon(), {
       onOpen: showWindow,
       onQuit: () => {

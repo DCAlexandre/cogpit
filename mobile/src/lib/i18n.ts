@@ -1,6 +1,8 @@
 /** Minimal self-contained i18n for the mobile app (fr/en), same approach as the
  *  desktop. POC note: kept separate from the desktop dicts for a robust build;
  *  unify later if desired. */
+import { savedLanguage } from './settings'
+
 type Dict = Record<string, string>
 
 const fr: Dict = {
@@ -22,6 +24,7 @@ const fr: Dict = {
   'state.loading': 'Chargement des conversations…',
   'state.reconnect': 'Reconnecter',
   'state.repair': 'Changer d’appareil',
+  'live.title': 'En cours sur le PC',
   'recent.title': 'Récentes',
   'projects.title': 'Projets',
   'projects.empty': 'Aucun projet',
@@ -51,6 +54,21 @@ const fr: Dict = {
   'attach.sending': 'Envoi des pièces jointes…',
   'attach.toobig': 'Fichier trop volumineux (max 20 Mo)',
   'attach.readfail': 'Lecture du fichier échouée',
+  'settings.title': 'Réglages',
+  'settings.palette': 'Palette',
+  'settings.scale': 'Taille du texte',
+  'settings.language': 'Langue',
+  'settings.langHint': 'L’app se recharge pour appliquer la langue.',
+  'settings.close': 'Fermer',
+  'palette.amber': 'Ambre',
+  'palette.pipboy': 'Vert',
+  'palette.rose': 'Rose',
+  'scale.sm': 'Petite',
+  'scale.md': 'Moyenne',
+  'scale.lg': 'Grande',
+  'lang.auto': 'Auto',
+  'lang.fr': 'Français',
+  'lang.en': 'English',
   'role.you': 'vous',
   'role.claude': 'claude',
   'perm.title': 'Autoriser cet outil ?',
@@ -78,6 +96,7 @@ const en: Dict = {
   'state.loading': 'Loading conversations…',
   'state.reconnect': 'Reconnect',
   'state.repair': 'Change device',
+  'live.title': 'Running on the PC',
   'recent.title': 'Recent',
   'projects.title': 'Projects',
   'projects.empty': 'No projects',
@@ -107,6 +126,21 @@ const en: Dict = {
   'attach.sending': 'Sending attachments…',
   'attach.toobig': 'File too large (max 20 MB)',
   'attach.readfail': 'Could not read the file',
+  'settings.title': 'Settings',
+  'settings.palette': 'Palette',
+  'settings.scale': 'Text size',
+  'settings.language': 'Language',
+  'settings.langHint': 'The app reloads to apply the language.',
+  'settings.close': 'Close',
+  'palette.amber': 'Amber',
+  'palette.pipboy': 'Green',
+  'palette.rose': 'Rose',
+  'scale.sm': 'Small',
+  'scale.md': 'Medium',
+  'scale.lg': 'Large',
+  'lang.auto': 'Auto',
+  'lang.fr': 'Français',
+  'lang.en': 'English',
   'role.you': 'you',
   'role.claude': 'claude',
   'perm.title': 'Allow this tool?',
@@ -115,7 +149,13 @@ const en: Dict = {
   'secure.badge': 'E2E encrypted'
 }
 
-const locale: 'fr' | 'en' = (navigator.language || 'en').toLowerCase().startsWith('fr') ? 'fr' : 'en'
+function resolveLocale(): 'fr' | 'en' {
+  const lang = savedLanguage()
+  const base = lang === 'auto' ? navigator.language || 'en' : lang
+  return base.toLowerCase().startsWith('fr') ? 'fr' : 'en'
+}
+
+const locale: 'fr' | 'en' = resolveLocale()
 const DICT = locale === 'fr' ? fr : en
 
 export function t(key: string): string {

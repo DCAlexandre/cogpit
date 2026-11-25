@@ -14,6 +14,15 @@ import {
   removeDevice,
   type SavedDevice
 } from './lib/devices'
+import {
+  loadSettings,
+  saveSettings,
+  applyAppearance,
+  type MobileSettings,
+  type Palette,
+  type Scale,
+  type Language
+} from './lib/settings'
 
 interface PermReq {
   id: string
@@ -131,6 +140,8 @@ export function App(): JSX.Element {
   })
   const [devices, setDevices] = useState<SavedDevice[]>(() => listDevices())
   const [deviceName, setDeviceName] = useState<string | undefined>(() => lastDevice()?.name)
+  const [settings, setSettings] = useState<MobileSettings>(() => loadSettings())
+  const [showSettings, setShowSettings] = useState(false)
   const [state, setState] = useState<ConnState>('connecting')
   const [info, setInfo] = useState<string | undefined>()
   const [scan, setScan] = useState<ScanPayload | null>(null)
@@ -143,6 +154,8 @@ export function App(): JSX.Element {
   // Who drives the open session: 'mobile' = us (PC paused), 'desktop' = the PC
   // reclaimed it (our next message takes control back), null = unknown/not contended.
   const [control, setControl] = useState<'mobile' | 'desktop' | null>(null)
+  // Session ids currently open in the desktop dock (pushed by the bridge).
+  const [liveIds, setLiveIds] = useState<Set<string>>(new Set())
   const [attempt, setAttempt] = useState(0)
 
   const connRef = useRef<Connection | null>(null)
@@ -152,6 +165,18 @@ export function App(): JSX.Element {
   const pendingUserRef = useRef<string[]>([])
 
   const refreshDevices = (): void => setDevices(listDevices())
+
+  const changeSettings = (patch: Partial<MobileSettings>): void => {
+    setSettings((cur) => {
+      const next = { ...cur, ...patch }
+      saveSettings(next)
+      applyAppearance(next)
+      // The locale is resolved once at module load, so a language change needs a
+      // reload to take effect (the link auto-reconnects to the saved device).
+      if (patch.language && patch.language !== cur.language) setTimeout(() => location.reload(), 150)
+      return next
+    })
+  }
 
   useEffect(() => {
     if (!target) return
@@ -203,6 +228,9 @@ export function App(): JSX.Element {
           break
         case 'control':
           if (msg.file === selectedRef.current?.filePath) setControl(msg.controlledBy)
+          break
+        case 'live':
+          setLiveIds(new Set(msg.sessionIds))
           break
         case 'permission':
           setPerm({ id: msg.id, tool: msg.tool, input: msg.input })
@@ -356,8 +384,9 @@ export function App(): JSX.Element {
   if (!target) {
     return (
       <div className="flex h-full flex-col">
-        <Header state={state} online={false} />
+        <Header online={false} onSettings={() => setShowSettings(true)} />
         <DeviceManager devices={devices} onConnect={connectDevice} onForget={forgetDevice} onTarget={connectTarget} />
+        <SettingsSheet open={showSettings} settings={settings} onChange={changeSettings} onClose={() => setShowSettings(false)} />
       </div>
     )
   }
@@ -373,7 +402,8 @@ export function App(): JSX.Element {
 
   return (
     <div className="flex h-full flex-col">
-      <Header state={state} online={state === 'ready'} title={title} onBack={goBack} />
+      <Header online={state === 'ready'} title={title} onBack={goBack} onSettings={() => setShowSettings(true)} />
+      <SettingsSheet open={showSettings} settings={settings} onChange={changeSettings} onClose={() => setShowSettings(false)} />
       {!scan ? (
         <StateBanner state={state} info={info} onRetry={reconnect} onUnpair={disconnect} />
       ) : selected ? (
@@ -388,24 +418,24 @@ export function App(): JSX.Element {
           onPerm={answerPerm}
         />
       ) : group ? (
-        <SessionList group={group} onOpen={openSession} />
+        <SessionList group={group} onOpen={openSession} liveIds={liveIds} />
       ) : (
-        <Home scan={scan} onOpenSession={openSession} onOpenProject={setSelectedProjectKey} />
+        <Home scan={scan} onOpenSession={openSession} onOpenProject={setSelectedProjectKey} liveIds={liveIds} />
       )}
     </div>
   )
 }
 
 function Header({
-  state,
   online,
   title,
-  onBack
+  onBack,
+  onSettings
 }: {
-  state: ConnState
   online: boolean
   title?: string
   onBack?: () => void
+  onSettings?: () => void
 }): JSX.Element {
   return (
     <header
@@ -417,14 +447,20 @@ function Header({
           ‹
         </button>
       )}
-      <span className={`led ${online ? 'led-live' : ''}`} />
+      <span className={`led shrink-0 ${online ? 'led-live' : ''}`} />
       <b className="phosphor min-w-0 truncate tracking-widest" style={{ color: 'hsl(var(--primary))' }}>
         {title ?? t('app.title')}
       </b>
-      {onBack && (
-        <span className="ml-auto shrink-0 text-[11px]" style={{ color: 'hsl(var(--muted))' }}>
-          {t('secure.badge')} · {state}
-        </span>
+      {onSettings && (
+        <button
+          onClick={onSettings}
+          aria-label={t('settings.title')}
+          title={t('settings.title')}
+          className="ml-auto shrink-0 rounded p-1 active:opacity-60"
+          style={{ color: 'hsl(var(--muted))' }}
+        >
+          <GearIcon />
+        </button>
       )}
     </header>
   )
@@ -606,23 +642,35 @@ function DeviceManager({
 function Home({
   scan,
   onOpenSession,
-  onOpenProject
+  onOpenProject,
+  liveIds
 }: {
   scan: ScanPayload
   onOpenSession: (s: SessionSummary) => void
   onOpenProject: (key: string) => void
+  liveIds: Set<string>
 }): JSX.Element {
   const groups = buildGroups(scan)
   const nameByKey = new Map(groups.map((g) => [g.key, g.name]))
-  const recents = visibleSessions(scan).slice(0, 10)
+  const all = visibleSessions(scan)
+  const live = all.filter((s) => liveIds.has(s.id))
+  const recents = all.slice(0, 10)
 
   return (
     <div className="flex-1 overflow-y-auto">
+      {live.length > 0 && (
+        <>
+          <SectionLabel>{t('live.title')}</SectionLabel>
+          {live.map((s) => (
+            <SessionRow key={s.id} s={s} live projectLabel={nameByKey.get(s.projectKey) ?? s.projectName} onOpen={onOpenSession} />
+          ))}
+        </>
+      )}
       {recents.length > 0 && (
         <>
           <SectionLabel>{t('recent.title')}</SectionLabel>
           {recents.map((s) => (
-            <SessionRow key={s.id} s={s} projectLabel={nameByKey.get(s.projectKey) ?? s.projectName} onOpen={onOpenSession} />
+            <SessionRow key={s.id} s={s} live={liveIds.has(s.id)} projectLabel={nameByKey.get(s.projectKey) ?? s.projectName} onOpen={onOpenSession} />
           ))}
         </>
       )}
@@ -664,7 +712,15 @@ function ProjectRow({ g, onOpen }: { g: Group; onOpen: () => void }): JSX.Elemen
   )
 }
 
-function SessionList({ group, onOpen }: { group: Group; onOpen: (s: SessionSummary) => void }): JSX.Element {
+function SessionList({
+  group,
+  onOpen,
+  liveIds
+}: {
+  group: Group
+  onOpen: (s: SessionSummary) => void
+  liveIds: Set<string>
+}): JSX.Element {
   const n = group.sessions.length
   return (
     <div className="flex-1 overflow-y-auto">
@@ -673,7 +729,7 @@ function SessionList({ group, onOpen }: { group: Group; onOpen: (s: SessionSumma
       </SectionLabel>
       {n === 0 && <Empty>{t('list.empty')}</Empty>}
       {group.sessions.map((s) => (
-        <SessionRow key={s.id} s={s} onOpen={onOpen} />
+        <SessionRow key={s.id} s={s} live={liveIds.has(s.id)} onOpen={onOpen} />
       ))}
     </div>
   )
@@ -682,10 +738,12 @@ function SessionList({ group, onOpen }: { group: Group; onOpen: (s: SessionSumma
 function SessionRow({
   s,
   projectLabel,
+  live,
   onOpen
 }: {
   s: SessionSummary
   projectLabel?: string
+  live?: boolean
   onOpen: (s: SessionSummary) => void
 }): JSX.Element {
   return (
@@ -696,6 +754,7 @@ function SessionRow({
     >
       <div className="min-w-0 flex-1">
         <div className="flex min-w-0 items-center gap-1.5">
+          {live && <span className="led led-live shrink-0" />}
           {s.pinned && <PinIcon />}
           {s.favorite && <StarIcon />}
           <div className="truncate text-sm font-medium">{s.displayTitle || s.title || s.id}</div>
@@ -769,6 +828,134 @@ function StarIcon(): JSX.Element {
     >
       <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77 5.82 21.02 7 14.14l-5-4.87 6.91-1.01L12 2z" />
     </svg>
+  )
+}
+
+function GearIcon(): JSX.Element {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      width="20"
+      height="20"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <circle cx="12" cy="12" r="3" />
+      <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+    </svg>
+  )
+}
+
+function OptionGroup({
+  label,
+  value,
+  options,
+  onPick
+}: {
+  label: string
+  value: string
+  options: { value: string; label: string }[]
+  onPick: (v: string) => void
+}): JSX.Element {
+  return (
+    <div className="mb-4">
+      <div className="mb-1.5 text-xs uppercase tracking-widest" style={{ color: 'hsl(var(--muted))' }}>
+        {label}
+      </div>
+      <div className="flex gap-2">
+        {options.map((o) => {
+          const on = o.value === value
+          return (
+            <button
+              key={o.value}
+              onClick={() => onPick(o.value)}
+              className="flex-1 rounded-md border px-3 py-2 text-sm active:opacity-70"
+              style={
+                on
+                  ? { borderColor: 'hsl(var(--primary))', background: 'hsl(var(--primary) / 0.12)', color: 'hsl(var(--primary))' }
+                  : { borderColor: 'hsl(var(--border))', color: 'hsl(var(--fg))' }
+              }
+            >
+              {o.label}
+            </button>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+function SettingsSheet({
+  open,
+  settings,
+  onChange,
+  onClose
+}: {
+  open: boolean
+  settings: MobileSettings
+  onChange: (patch: Partial<MobileSettings>) => void
+  onClose: () => void
+}): JSX.Element | null {
+  if (!open) return null
+  return (
+    <div
+      className="fixed inset-0 z-50 flex flex-col justify-end"
+      style={{ background: 'hsl(0 0% 0% / 0.55)' }}
+      onClick={onClose}
+    >
+      <div
+        className="rounded-t-2xl border-t p-4"
+        style={{ background: 'hsl(var(--panel))', borderColor: 'hsl(var(--border))', paddingBottom: 'max(16px, env(safe-area-inset-bottom))' }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="mb-4 flex items-center justify-between">
+          <b className="phosphor tracking-widest" style={{ color: 'hsl(var(--primary))' }}>
+            {t('settings.title')}
+          </b>
+          <button onClick={onClose} className="text-sm" style={{ color: 'hsl(var(--muted))' }}>
+            {t('settings.close')}
+          </button>
+        </div>
+
+        <OptionGroup
+          label={t('settings.palette')}
+          value={settings.palette}
+          options={[
+            { value: 'amber', label: t('palette.amber') },
+            { value: 'pipboy', label: t('palette.pipboy') },
+            { value: 'rose', label: t('palette.rose') }
+          ]}
+          onPick={(v) => onChange({ palette: v as Palette })}
+        />
+        <OptionGroup
+          label={t('settings.scale')}
+          value={settings.scale}
+          options={[
+            { value: 'sm', label: t('scale.sm') },
+            { value: 'md', label: t('scale.md') },
+            { value: 'lg', label: t('scale.lg') }
+          ]}
+          onPick={(v) => onChange({ scale: v as Scale })}
+        />
+        <OptionGroup
+          label={t('settings.language')}
+          value={settings.language}
+          options={[
+            { value: 'auto', label: t('lang.auto') },
+            { value: 'fr', label: t('lang.fr') },
+            { value: 'en', label: t('lang.en') }
+          ]}
+          onPick={(v) => onChange({ language: v as Language })}
+        />
+        <div className="text-[11px]" style={{ color: 'hsl(var(--muted))' }}>
+          {t('settings.langHint')}
+        </div>
+      </div>
+    </div>
   )
 }
 

@@ -42,3 +42,4 @@ export type ServerMsg =
   | { t: 'permission'; id: string; tool: string; input: unknown }
   | { t: 'busy'; busy: boolean }
   | { t: 'control'; file: string; controlledBy: 'mobile' | 'desktop' }
+  | { t: 'live'; sessionIds: string[] }
