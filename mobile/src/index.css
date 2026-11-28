@@ -15,6 +15,31 @@
   --live: 172 76% 55%;
 }
 
+/* User-switchable palettes (mirror the desktop values). Amber is the default. */
+[data-palette='pipboy'] {
+  --primary: 145 85% 50%;
+  --accent: 135 82% 62%;
+  --user: 150 40% 15%;
+  --live: 95 90% 58%;
+}
+[data-palette='rose'] {
+  --primary: 330 85% 62%;
+  --accent: 280 82% 72%;
+  --user: 315 35% 17%;
+  --live: 190 88% 62%;
+}
+
+/* UI scale: html font-size drives the rem-based text sizes. */
+html {
+  font-size: 16px;
+}
+html[data-scale='sm'] {
+  font-size: 14px;
+}
+html[data-scale='lg'] {
+  font-size: 18px;
+}
+
 @layer base {
   html,
   body,

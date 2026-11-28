@@ -1,7 +1,11 @@
 import React from 'react'
 import { createRoot } from 'react-dom/client'
 import { App } from './App'
+import { applyAppearance, loadSettings } from './lib/settings'
 import './index.css'
+
+// Apply the saved palette/scale before first paint (no flash of the default).
+applyAppearance(loadSettings())
 
 /** Last-resort guard: a render crash shows a readable message instead of a blank
  *  (black) screen, and lets the user reload. */

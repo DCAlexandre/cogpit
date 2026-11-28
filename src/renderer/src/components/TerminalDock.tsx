@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { X, ChevronDown, ChevronUp, TerminalSquare } from 'lucide-react'
+import { X, ChevronDown, ChevronUp, TerminalSquare, Pause, Smartphone } from 'lucide-react'
 import type { TerminalTarget } from '@shared/types'
 import { TerminalView } from './TerminalView'
 import { Button } from './ui/button'
@@ -24,6 +24,10 @@ interface Props {
   onClose: (key: string) => void
   onReorder: (fromKey: string, toKey: string) => void
   onToggleCollapse: () => void
+  /** sessionId -> phone label for sessions a phone has taken over (tab paused). */
+  mobileControlled: Map<string, string>
+  /** "Reprendre": reclaim a phone-controlled session (reloads its tab). */
+  onReclaim: (sessionId: string) => void
 }
 
 const STRIP_H = 34
@@ -39,7 +43,9 @@ export function TerminalDock({
   onActivate,
   onClose,
   onReorder,
-  onToggleCollapse
+  onToggleCollapse,
+  mobileControlled,
+  onReclaim
 }: Props): JSX.Element {
   const t = useT()
   const [height, setHeight] = useState(340)
@@ -94,6 +100,7 @@ export function TerminalDock({
         <div className="flex min-w-0 flex-1 items-center gap-1 overflow-x-auto">
           {terminals.map((term) => {
             const on = term.key === activeKey
+            const paused = !!term.sessionId && mobileControlled.has(term.sessionId)
             return (
               <div
                 key={term.key}
@@ -131,7 +138,11 @@ export function TerminalDock({
                 )}
                 title={term.title}
               >
-                <span className={cn('led led-live', on && 'animate-led-pulse')} />
+                {paused ? (
+                  <Pause className="h-3 w-3 shrink-0 text-primary" />
+                ) : (
+                  <span className={cn('led led-live', on && 'animate-led-pulse')} />
+                )}
                 <span className="max-w-[160px] truncate">{term.title}</span>
                 <button
                   onClick={(e) => {
@@ -165,17 +176,49 @@ export function TerminalDock({
           background), only the active one shown. Collapsing just hides the pane;
           it must never unmount a TerminalView or its pty would be killed. */}
       <div className={cn('relative min-h-0 flex-1', collapsed && 'hidden')}>
-        {terminals.map((term) => (
-          <div key={term.key} className={cn('absolute inset-0', term.key !== activeKey && 'hidden')}>
-            <TerminalView
-              target={term.target}
-              integrated
-              active={!collapsed && term.key === activeKey}
-              resizing={resizing}
-            />
-          </div>
-        ))}
+        {terminals.map((term) => {
+          const device = term.sessionId ? mobileControlled.get(term.sessionId) : undefined
+          return (
+            <div key={term.key} className={cn('absolute inset-0', term.key !== activeKey && 'hidden')}>
+              {device ? (
+                // Paused: the TerminalView is unmounted (its pty killed) while a
+                // phone drives. Clearing control remounts it → `claude --resume`.
+                <PausedTab device={device} onReclaim={() => onReclaim(term.sessionId as string)} />
+              ) : (
+                <TerminalView
+                  target={term.target}
+                  integrated
+                  active={!collapsed && term.key === activeKey}
+                  resizing={resizing}
+                />
+              )}
+            </div>
+          )
+        })}
       </div>
     </section>
+  )
+}
+
+/** Overlay shown in a dock tab while a phone drives that session. The pty is
+ *  gone; "Reprendre" reclaims control and reloads the conversation on the PC. */
+function PausedTab({ device, onReclaim }: { device: string; onReclaim: () => void }): JSX.Element {
+  const t = useT()
+  return (
+    <div className="flex h-full w-full flex-col items-center justify-center gap-4 bg-background/70 p-6 text-center">
+      <div className="flex items-center gap-2 text-primary">
+        <Pause className="h-5 w-5" />
+        <Smartphone className="h-5 w-5" />
+      </div>
+      <div className="max-w-sm text-sm font-medium text-foreground">{t('dock.controlledBy', { device })}</div>
+      <div className="max-w-sm text-xs text-muted-foreground">{t('dock.controlledHint')}</div>
+      <Button
+        onClick={onReclaim}
+        variant="outline"
+        className="border-primary/50 text-primary hover:bg-primary/10"
+      >
+        {t('dock.reclaim')}
+      </Button>
+    </div>
   )
 }

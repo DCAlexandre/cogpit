@@ -108,6 +108,15 @@ export interface MobileStatus {
   interactive: boolean
 }
 
+/** A session control handoff between the desktop dock and a phone. */
+export interface MobileControlEvent {
+  sessionId: string
+  /** 'mobile' = a phone took the session over (pause the tab); 'desktop' = reclaimed (reload it). */
+  controlledBy: 'mobile' | 'desktop'
+  /** phone label (e.g. "mobile 192.168.1.42"), set when controlledBy === 'mobile'. */
+  device?: string
+}
+
 /** The `claude` CLI as resolved on this machine (for interactive mobile use). */
 export interface ClaudeInfo {
   found: boolean
@@ -252,8 +261,12 @@ export interface CogpitApi {
     claudeInfo(): Promise<ClaudeInfo>
     claudeInstall(): Promise<{ ok: boolean; output: string }>
     claudeUpdate(): Promise<{ ok: boolean; output: string }>
-    /** Push the ids of sessions open in the dock, so the bridge won't drive them. */
+    /** Push the ids of sessions open in the dock, so the bridge can coordinate takeover. */
     setLiveSessions(ids: string[]): void
+    /** Reclaim a session a phone took over; the renderer reloads its dock tab. */
+    reclaim(sessionId: string): void
+    /** Control handoffs from the bridge: a phone took a session over, or the desktop reclaimed it. */
+    onControl(cb: (e: MobileControlEvent) => void): () => void
   }
   /** Fire-and-forget debug log forwarded to the main-process log file (dev). */
   log(level: 'debug' | 'info' | 'warn' | 'error', scope: string, msg: string, data?: unknown): void

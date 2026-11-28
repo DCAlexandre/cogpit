@@ -12,14 +12,24 @@ export interface ScanPayload {
   generatedAt: string
 }
 
+/** A file attached from the phone (image, screenshot, document…). */
+export interface Attachment {
+  name: string
+  /** MIME type as reported by the phone, e.g. "image/png" (best-effort). */
+  mime: string
+  /** base64-encoded file bytes (no `data:` prefix). */
+  dataB64: string
+}
+
 /** Phone -> PC. */
 export type ClientMsg =
   | { t: 'scan' }
   | { t: 'transcript'; file: string }
   | { t: 'subscribe'; file: string }
   | { t: 'unsubscribe' }
-  // interaction (best-effort, Agent SDK)
-  | { t: 'send'; file: string; sessionId: string; cwd: string | null; text: string }
+  // interaction (best-effort, Agent SDK). `attachments` are written to a temp
+  // folder on the PC and their paths handed to Claude (which reads images/files).
+  | { t: 'send'; file: string; sessionId: string; cwd: string | null; text: string; attachments?: Attachment[] }
   | { t: 'permission'; id: string; allow: boolean }
   | { t: 'interrupt' }
 
@@ -43,3 +53,11 @@ export type ServerMsg =
   | { t: 'event'; event: AgentEvent }
   | { t: 'permission'; id: string; tool: string; input: unknown }
   | { t: 'busy'; busy: boolean }
+  // control handoff: 'mobile' = this phone took the session over (desktop tab
+  // paused); 'desktop' = the PC reclaimed it (phone goes read-only until it
+  // sends again, which takes control back).
+  | { t: 'control'; file: string; controlledBy: 'mobile' | 'desktop' }
+  // ids of sessions currently open in the desktop dock, so the phone can list
+  // them first ("running on the PC") for quick takeover. Pushed on connect and
+  // whenever the dock changes.
+  | { t: 'live'; sessionIds: string[] }

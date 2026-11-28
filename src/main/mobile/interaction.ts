@@ -10,9 +10,14 @@
  * The SDK is ESM-only, loaded via a runtime import() hidden from the bundler. If
  * it can't load, the bridge serves read-only and the phone hides its input box.
  */
+import { writeFile, mkdir } from 'fs/promises'
+import { tmpdir } from 'os'
+import { join } from 'path'
 import type { InteractionEngine, Conn } from './server'
+import type { Attachment } from '../../shared/mobile/messages'
 import { resolveClaude } from './claudeBin'
 import { isDockLive } from './dockState'
+import { controllerConnId, mobileTakeControl, releaseByConn } from './control'
 import { logger } from '../lib/logger'
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -22,6 +27,39 @@ const dynamicImport = new Function('m', 'return import(m)') as (m: string) => Pr
 
 // Global single-writer lock: sessionId -> owning connection id.
 const driving = new Map<string, number>()
+
+// Defensive cap on a single attachment (the phone caps too); larger ones are skipped.
+const MAX_ATTACHMENT_BYTES = 20 * 1024 * 1024
+
+/** Write the phone's attachments to a temp folder and return their absolute paths.
+ *  We hand these paths to Claude in the prompt; it reads images/files natively. */
+async function saveAttachments(sessionId: string, attachments: Attachment[]): Promise<string[]> {
+  const dir = join(tmpdir(), 'cogpit-mobile-uploads', sessionId.replace(/[^a-zA-Z0-9_-]/g, '_') || 'session')
+  await mkdir(dir, { recursive: true })
+  const paths: string[] = []
+  for (const a of attachments) {
+    let bytes: Buffer
+    try {
+      bytes = Buffer.from(a.dataB64, 'base64')
+    } catch {
+      continue
+    }
+    if (!bytes.length || bytes.length > MAX_ATTACHMENT_BYTES) continue
+    const safe = (a.name || 'file').replace(/[\\/:*?"<>|\r\n]/g, '_').slice(0, 120) || 'file'
+    const path = join(dir, `${Date.now()}-${paths.length}-${safe}`)
+    await writeFile(path, bytes)
+    paths.push(path)
+  }
+  return paths
+}
+
+/** Build the prompt sent to Claude: the caption, plus the saved attachment paths. */
+function composePrompt(text: string, paths: string[]): string {
+  if (!paths.length) return text
+  const list = paths.map((p) => `- ${p}`).join('\n')
+  const header = text.trim() ? `${text}\n\n` : 'Analyse les pièces jointes suivantes.\n\n'
+  return `${header}[Pièces jointes envoyées depuis le mobile — lis-les]\n${list}`
+}
 
 interface ConnState {
   ac: AbortController | null
@@ -56,11 +94,29 @@ export async function createInteraction(): Promise<InteractionEngine | null> {
     return s
   }
 
-  async function run(conn: Conn, args: { sessionId: string; cwd: string | null; text: string }): Promise<void> {
-    // Single-writer guards.
+  async function run(
+    conn: Conn,
+    args: { file: string; sessionId: string; cwd: string | null; text: string; attachments?: Attachment[] }
+  ): Promise<void> {
+    // A desktop dock tab is open for this session → TAKE IT OVER (pause the PC
+    // tab) instead of refusing, unless another phone already controls it. The
+    // desktop reloads with `claude --resume` when it reclaims, picking up what we
+    // add here. Taking over is idempotent across our own successive messages.
     if (isDockLive(args.sessionId)) {
-      conn.send({ t: 'event', event: { kind: 'error', text: 'Session ouverte en terminal sur le PC — pilotage mobile refusé.' } })
-      return
+      const owner = controllerConnId(args.sessionId)
+      if (owner !== undefined && owner !== conn.id) {
+        conn.send({ t: 'event', event: { kind: 'error', text: 'Session déjà pilotée depuis un autre appareil.' } })
+        return
+      }
+      if (owner === undefined) {
+        mobileTakeControl(args.sessionId, {
+          connId: conn.id,
+          device: conn.label,
+          abort: () => stateFor(conn).ac?.abort(),
+          notifyPhone: () => conn.send({ t: 'control', file: args.file, controlledBy: 'desktop' })
+        })
+        conn.send({ t: 'control', file: args.file, controlledBy: 'mobile' })
+      }
     }
     const holder = driving.get(args.sessionId)
     if (holder !== undefined && holder !== conn.id) {
@@ -89,8 +145,14 @@ export async function createInteraction(): Promise<InteractionEngine | null> {
     }
 
     try {
+      let prompt = args.text
+      if (args.attachments?.length) {
+        const paths = await saveAttachments(args.sessionId, args.attachments)
+        logger.info('mobile', 'attachments saved', { count: paths.length })
+        prompt = composePrompt(args.text, paths)
+      }
       const q = sdk.query({
-        prompt: args.text,
+        prompt,
         options: {
           resume: args.sessionId,
           cwd: args.cwd ?? undefined,
@@ -119,7 +181,7 @@ export async function createInteraction(): Promise<InteractionEngine | null> {
 
   return {
     send(a) {
-      void run(a.conn, { sessionId: a.sessionId, cwd: a.cwd, text: a.text })
+      void run(a.conn, { file: a.file, sessionId: a.sessionId, cwd: a.cwd, text: a.text, attachments: a.attachments })
     },
     permission(conn, id, allow) {
       stateFor(conn).perms.get(id)?.(allow)
@@ -144,6 +206,8 @@ export async function createInteraction(): Promise<InteractionEngine | null> {
       }
       // release any sessions this connection was driving
       for (const [sid, owner] of driving) if (owner === conn.id) driving.delete(sid)
+      // auto-reclaim: a paused desktop tab this phone controlled reloads itself
+      releaseByConn(conn.id)
     }
   }
 }

@@ -9,6 +9,9 @@ const terminal = {
     'dock.collapse': 'Réduire (les sessions continuent de tourner)',
     'dock.showAria': 'Afficher les terminaux',
     'dock.collapseAria': 'Réduire le dock, sessions conservées',
+    'dock.controlledBy': 'Contrôlée depuis {device}',
+    'dock.controlledHint': 'Session en pause sur le PC pendant le pilotage mobile. « Reprendre » recharge la conversation (claude --resume).',
+    'dock.reclaim': 'Reprendre',
     // TerminalView
     'terminal.ended': '\r\n\x1b[2m— session terminée —\x1b[0m',
     'terminal.unavailable': '\x1b[31mTerminal intégré indisponible.\x1b[0m',
@@ -37,6 +40,9 @@ const terminal = {
     'dock.collapse': 'Collapse (sessions keep running)',
     'dock.showAria': 'Show terminals',
     'dock.collapseAria': 'Collapse the dock, sessions preserved',
+    'dock.controlledBy': 'Controlled from {device}',
+    'dock.controlledHint': 'Paused on the PC while a phone drives it. "Resume" reloads the conversation (claude --resume).',
+    'dock.reclaim': 'Resume',
     // TerminalView
     'terminal.ended': '\r\n\x1b[2m— session ended —\x1b[0m',
     'terminal.unavailable': '\x1b[31mIntegrated terminal unavailable.\x1b[0m',

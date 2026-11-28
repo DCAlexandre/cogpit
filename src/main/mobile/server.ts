@@ -11,9 +11,10 @@ import { readFile } from 'fs/promises'
 import { watchFile, unwatchFile } from 'fs'
 import { join, normalize, resolve, extname } from 'path'
 import { responder, type SecureChannel } from '../../shared/mobile/crypto'
-import type { ClientMsg, ServerMsg } from '../../shared/mobile/messages'
+import type { Attachment, ClientMsg, ServerMsg } from '../../shared/mobile/messages'
 import { scanAll, readTranscript } from '../lib/sessions'
 import { claudeCodeAdapter } from '../adapters/claudeCode'
+import { liveDockSessions } from './dockState'
 import { logger } from '../lib/logger'
 
 export interface InteractionEngine {
@@ -23,6 +24,7 @@ export interface InteractionEngine {
     sessionId: string
     cwd: string | null
     text: string
+    attachments?: Attachment[]
   }): void
   permission(conn: Conn, id: string, allow: boolean): void
   interrupt(conn: Conn): void
@@ -47,6 +49,8 @@ export interface BridgeHandle {
 
 export interface Conn {
   id: number
+  /** human label for this phone (remote IP), shown on a paused desktop tab */
+  label: string
   ws: WebSocket
   channel: SecureChannel | null
   watchedFile: string | null
@@ -127,7 +131,8 @@ export function startBridge(opts: BridgeOptions): BridgeHandle {
       /* default */
     }
     if (pathname === '/ws') {
-      wss.handleUpgrade(req, socket, head, (ws) => onConnection(ws))
+      const ip = (req.socket.remoteAddress || '').replace(/^::ffff:/, '') || 'LAN'
+      wss.handleUpgrade(req, socket, head, (ws) => onConnection(ws, ip))
     } else {
       socket.destroy()
     }
@@ -198,7 +203,14 @@ export function startBridge(opts: BridgeOptions): BridgeHandle {
         return
       case 'send':
         if (opts.interaction) {
-          opts.interaction.send({ conn, file: msg.file, sessionId: msg.sessionId, cwd: msg.cwd, text: msg.text })
+          opts.interaction.send({
+            conn,
+            file: msg.file,
+            sessionId: msg.sessionId,
+            cwd: msg.cwd,
+            text: msg.text,
+            attachments: msg.attachments
+          })
         } else {
           conn.send({ t: 'error', message: 'interaction-unavailable' })
         }
@@ -212,9 +224,10 @@ export function startBridge(opts: BridgeOptions): BridgeHandle {
     }
   }
 
-  function onConnection(ws: WebSocket): void {
+  function onConnection(ws: WebSocket, ip: string): void {
     const conn: Conn = {
       id: ++counter,
+      label: `mobile ${ip}`,
       ws,
       channel: null,
       watchedFile: null,
@@ -247,6 +260,7 @@ export function startBridge(opts: BridgeOptions): BridgeHandle {
           conn.channel = channel
           ws.send(Buffer.from(fPub))
           conn.send({ t: 'hello', host: opts.hostName, adapter: claudeCodeAdapter.label, interactive: !!opts.interaction })
+          conn.send({ t: 'live', sessionIds: liveDockSessions() })
         } catch (e) {
           logger.warn('mobile', 'handshake failed', { id: conn.id, err: String(e) })
           ws.close()
