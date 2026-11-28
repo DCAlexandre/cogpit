@@ -16,6 +16,7 @@ import { setLiveDockNotifier } from './mobile/dockState'
 let mainWindow: BrowserWindow | null = null
 let quitting = false
 let exitArmed = false
+let lastHangReloadAt = 0
 
 const iconPath = join(__dirname, '../../resources/icon.png')
 
@@ -64,6 +65,25 @@ function createWindow(): void {
   mainWindow.webContents.on('render-process-gone', (_e, details) =>
     logger.error('renderer', 'render-process-gone', { reason: details.reason })
   )
+  // The renderer can go UNRESPONSIVE (hung main thread) without crashing — e.g.
+  // after waking from sleep, when the terminal restore re-mounts xterm against a
+  // lost GPU/canvas context. There's no crash event for that, so it used to leave
+  // the app frozen with nothing in the log. Record it and recover by reloading
+  // (which tears down the stuck JS context), throttled so it can never thrash.
+  mainWindow.on('unresponsive', () => {
+    logger.error('renderer', 'unresponsive (hung main thread)')
+    const now = Date.now()
+    if (now - lastHangReloadAt > 30000) {
+      lastHangReloadAt = now
+      logger.warn('renderer', 'reloading the hung renderer')
+      try {
+        mainWindow?.webContents.reload()
+      } catch {
+        /* window gone */
+      }
+    }
+  })
+  mainWindow.on('responsive', () => logger.info('renderer', 'responsive again'))
   if (!app.isPackaged) {
     mainWindow.webContents.on('console-message', (_e, level, message, line, sourceId) => {
       if (level >= 2) logger.warn('renderer-console', message, { line, sourceId })

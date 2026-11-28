@@ -343,16 +343,18 @@ export default function App(): JSX.Element {
   )
 
   // Tell the mobile bridge which sessions are open in the dock, so it can hand
-  // control back and forth (single-writer per session).
+  // control back and forth (single-writer per session). Optional-chained so an
+  // older/desynced preload (e.g. after a dev HMR) degrades gracefully instead of
+  // crashing the whole App on mount (which otherwise reload-loops).
   useEffect(() => {
-    window.api.mobile.setLiveSessions([...liveIds])
+    window.api.mobile.setLiveSessions?.([...liveIds])
   }, [liveIds])
 
   // A phone took a session over (pause its tab) or the desktop reclaimed it
   // (clear → the TerminalView remounts and re-runs `claude --resume`).
   useEffect(
     () =>
-      window.api.mobile.onControl((e) => {
+      window.api.mobile.onControl?.((e) => {
         setMobileControlled((cur) => {
           const next = new Map(cur)
           if (e.controlledBy === 'mobile') next.set(e.sessionId, e.device ?? 'mobile')
@@ -366,7 +368,7 @@ export default function App(): JSX.Element {
   // Desktop "Reprendre": tell the bridge to release the phone, then clear locally
   // so the tab reloads immediately.
   const reclaimSession = useCallback((sessionId: string) => {
-    window.api.mobile.reclaim(sessionId)
+    window.api.mobile.reclaim?.(sessionId)
     setMobileControlled((cur) => {
       if (!cur.has(sessionId)) return cur
       const next = new Map(cur)
